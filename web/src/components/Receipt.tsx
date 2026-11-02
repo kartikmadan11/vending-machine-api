@@ -1,22 +1,21 @@
 import { START_COMMAND } from '../api'
 import { changeText, coinCount, describe, type Attempt } from '../attempts'
-import { coinSize, formatPence } from '../money'
+import { formatPence } from '../money'
 import { LIMIT } from '../rateWindow'
 import { useNow } from '../useNow'
-import { Coin } from './Coin'
 
-/** Shows the answer to the latest purchase, or to each request of a burst. */
-export function ChangeTray({ attempts }: { attempts: Attempt[] }) {
+/** The answer to the latest purchase, or to each request of a burst, in words. */
+export function Receipt({ attempts }: { attempts: Attempt[] }) {
   return (
-    <section className="card" aria-labelledby="change-heading">
-      <header className="card-head">
-        <h2 id="change-heading">
-          <span className="step">3</span>Collect your change
-        </h2>
-        <p className="hint">Fewest coins it can make</p>
+    <section className="panel receipt" aria-labelledby="change-heading">
+      <header className="panel-head">
+        <h2 id="change-heading">Receipt</h2>
+        <p className="hint">Change in the fewest coins</p>
       </header>
       <div aria-live="polite">
-        {attempts.length === 0 && <p className="tray tray-empty">Your change will land here.</p>}
+        {attempts.length === 0 && (
+          <p className="empty">Choose an item, pay and press Buy. Your change drops into the cup.</p>
+        )}
         {attempts.length === 1 && <Single attempt={attempts[0]} />}
         {attempts.length > 1 && <Burst attempts={attempts} />}
       </div>
@@ -30,34 +29,20 @@ function Single({ attempt }: { attempt: Attempt }) {
   if (outcome.kind === 'sold') {
     const { sale } = outcome
     return (
-      <div className="tray">
-        <div className="tray-head">
+      <div className={`callout tone-${tone}`} key={attempt.id}>
+        <div className="callout-head">
           <span className={`badge tone-${tone}`}>{badge}</span>
           <strong>
             {title}: {attempt.item}
           </strong>
-          <span className="tray-meta">
-            Paid {formatPence(attempt.paid)},{' '}
-            {sale.change_total === 0
-              ? 'exact, so no change'
-              : `change ${formatPence(sale.change_total)} in ${plural(coinCount(sale), 'coin')}`}
-          </span>
         </div>
-        {sale.change.length > 0 && (
-          // Keyed by attempt so the coins drop in again for every sale.
-          <div className="tray-coins" key={attempt.id}>
-            {sale.change.flatMap(({ denomination, count }) =>
-              Array.from({ length: count }, (_, i) => (
-                <Coin
-                  key={`${denomination}-${i}`}
-                  className="tray-coin"
-                  denomination={denomination}
-                  size={coinSize(denomination, 52)}
-                />
-              )),
-            )}
-          </div>
-        )}
+        <p className="callout-body">
+          Paid {formatPence(attempt.paid)},{' '}
+          {sale.change_total === 0
+            ? 'exact, so no change.'
+            : `change ${formatPence(sale.change_total)} in ${plural(coinCount(sale), 'coin')}.`}
+        </p>
+        {sale.change.length > 0 && <p className="receipt-coins">{changeText(sale)}</p>}
       </div>
     )
   }

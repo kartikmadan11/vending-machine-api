@@ -25,14 +25,14 @@ The page talks only to the API, so everything it shows is the API's own answer.
 
 **A sale.**
 Choose Cola (A2, £1.20), insert a £2 coin and press **Buy**.
-80p comes back as 50p, 20p and 10p, and the machine panel shows exactly those three coins leave.
+80p drops into the cup as 50p, 20p and 10p, and Inside the machine shows exactly those three coins leave their tubes.
 
 **Not enough money.**
 Choose Flat white (A4, £2.15), insert £1 and press **Buy**.
 The answer is 400, nothing is taken, and the £1 is still inserted.
 
 **No exact change.**
-Switch to bob, type 0 into the custom price, insert the £20 note and press **Buy**, twice.
+Switch to bob, press 0 on the keypad for a custom price, insert the £20 note and press **Buy**, twice.
 The first pays out ten £2 coins and empties them.
 The second cannot make £20 from what is left, so it is refused with 409 and the machine is unchanged.
 
@@ -71,20 +71,25 @@ Restarting the API refills the machine.
 The API is the product.
 The page in `web/` is there to drive it and to make each answer visible, not to replace it.
 
-**The screen is black.**
-Colour is kept for meaning: green sold, amber short, rose refused, sky turned away.
+**It looks like a vending machine.**
+The products stand in wire spirals behind glass, each priced on the shelf rail under its slot code.
+You pay through the coin slot and the note reader, and the keypad takes a custom price.
+What you buy drops into the bin and the change lands in the cup, while the panels beside the machine say the same in words.
+The product photos come from Wikimedia Commons, and each one is credited and linked under the page.
+
+**Off the machine, colour is kept for meaning.**
+Green is sold, amber short, rose refused and sky turned away.
 The metals are the one exception, because a 2p has to look like a 2p.
 Every colour is a named `--vend-` token, and `npm run lint:palette` fails on a raw one anywhere else.
 
-**Everything is monospace.**
-It is the platform's own monospace font, so nothing is downloaded.
-Every digit is the same width, so prices, change and coin counts line up without being told to.
+**The type is the platform's own.**
+It is the system sans-serif, so no font is downloaded, and figures are tabular, so prices, change and coin counts line up.
 
 **Coins are drawn to scale.**
 Each one is drawn from its real diameter and shape: the 20p and 50p are seven-sided Reuleaux curves, the £1 has twelve sides, and the £1 and £2 are bimetallic.
 
 **Every answer shows its status code.**
-The change tray, the burst list and the activity log all badge the HTTP status, so the page doubles as a tour of the API.
+The receipt, the burst list and the activity log all badge the HTTP status, so the page doubles as a tour of the API.
 
 ## Architecture decisions
 
@@ -228,6 +233,6 @@ src/vending/
   api.py         FastAPI app and request and response models
 tests/           change against brute force, a threaded race, a fake clock, HTTP, a real server
 web/
-  src/           React client: products, payment, change tray, machine panel, activity log
+  src/           React client: the machine, the receipt, the coin tubes, the activity log
   scripts/       the palette gate
 ```

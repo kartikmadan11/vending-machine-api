@@ -1,5 +1,6 @@
+import type { CSSProperties } from 'react'
 import { START_COMMAND, type MachineState } from '../api'
-import { coinLabel, formatPence, metalOf, STARTING_COUNT, UK_COINS } from '../money'
+import { coinLabel, coinSize, formatPence, metalOf, STARTING_COUNT, UK_COINS } from '../money'
 import { valueOf, type MachineChange } from '../supply'
 import { Coin } from './Coin'
 
@@ -11,14 +12,14 @@ interface Props {
   highlight: Highlight | null
 }
 
-/** The coins left for change and the sealed cash box, as GET /machine reports them. */
+/** The coin tubes and the sealed cash box, as GET /machine reports them. */
 export function MachinePanel({ machine, online, highlight }: Props) {
   const counts = new Map(machine?.coins.map((c) => [c.denomination, c.count]))
   const largestFirst = [...UK_COINS].reverse()
 
   return (
-    <section className="card" aria-labelledby="machine-heading">
-      <header className="card-head">
+    <section className="panel" aria-labelledby="machine-heading">
+      <header className="panel-head">
         <h2 id="machine-heading">Inside the machine</h2>
         <p className="hint">Never refilled until the API restarts</p>
       </header>
@@ -31,25 +32,28 @@ export function MachinePanel({ machine, online, highlight }: Props) {
         </div>
       )}
 
-      <ul className="supply" aria-label="Coins left for change">
+      <ul className="tubes" aria-label="Coins left for change">
         {largestFirst.map((pence) => {
           const count = counts.get(pence)
           const flashed = highlight?.coins.includes(pence)
           return (
-            <li key={pence} className="supply-row">
-              {flashed && <span key={highlight?.key} className="supply-flash" aria-hidden />}
-              <Coin denomination={pence} size={28} decorative />
-              <span className="supply-label">{coinLabel(pence)}</span>
-              <span className="supply-pips" aria-hidden>
-                {Array.from({ length: Math.max(STARTING_COUNT, count ?? 0) }, (_, i) => (
-                  <span
-                    key={i}
-                    className={count !== undefined && i < count ? `supply-pip on ${metalOf(pence)}` : 'supply-pip'}
-                  />
+            <li key={pence} className="tube-column">
+              {/* Each tube is as wide as its coin, as in a real changer. */}
+              <span
+                className="tube"
+                style={{ '--coin': coinSize(pence, 40), '--rows': STARTING_COUNT } as CSSProperties}
+                aria-hidden
+              >
+                {flashed && <span key={highlight?.key} className="tube-flash" />}
+                {Array.from({ length: count ?? 0 }, (_, i) => (
+                  <span key={i} className={`tube-coin ${metalOf(pence)}`} />
                 ))}
               </span>
-              <span className={count === 0 ? 'supply-count supply-empty' : 'supply-count'}>
-                {count === undefined ? '-' : count === 0 ? 'Empty' : `${count} left`}
+              <Coin denomination={pence} size={26} decorative />
+              <span className={count === 0 ? 'tube-count tube-empty' : 'tube-count'}>
+                <span className="sr-only">{coinLabel(pence)}: </span>
+                {count === undefined ? '-' : count === 0 ? 'Empty' : count}
+                {count !== undefined && count > 0 && <span className="sr-only"> left</span>}
               </span>
             </li>
           )
@@ -62,7 +66,7 @@ export function MachinePanel({ machine, online, highlight }: Props) {
           <span className="total-value">{machine ? formatPence(valueOf(machine.coins)) : '-'}</span>
         </div>
         <div className="total">
-          {highlight?.cashBox && <span key={highlight.key} className="supply-flash" aria-hidden />}
+          {highlight?.cashBox && <span key={highlight.key} className="total-flash" aria-hidden />}
           <span className="total-label">Cash box, sealed</span>
           <span className="total-value">{machine ? formatPence(machine.cash_box) : '-'}</span>
         </div>

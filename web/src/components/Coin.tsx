@@ -107,7 +107,7 @@ export function Coin({ denomination, size, className, decorative = false }: Prop
           strokeWidth={1.5}
         />
       )}
-      {/* No font-family: the text inherits the page's monospace, like every other figure. */}
+      {/* No font-family: the text inherits the page's font, like every other figure. */}
       <text
         x="50"
         y="51"

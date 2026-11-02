@@ -5,8 +5,8 @@ const time = new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digi
 
 export function ActivityLog({ attempts, onClear }: { attempts: Attempt[]; onClear: () => void }) {
   return (
-    <section className="card" aria-labelledby="log-heading">
-      <header className="card-head">
+    <section className="panel" aria-labelledby="log-heading">
+      <header className="panel-head">
         <h2 id="log-heading">Activity</h2>
         <button type="button" className="text-button" onClick={onClear} disabled={attempts.length === 0}>
           Clear

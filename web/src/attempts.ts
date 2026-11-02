@@ -6,6 +6,8 @@ export interface Attempt {
   id: number
   at: number
   customer: string
+  /** The product's slot, or null for a custom price. */
+  slot: string | null
   item: string
   price: number
   paid: number

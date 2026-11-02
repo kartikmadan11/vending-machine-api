@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { getMachine, purchase, type MachineState } from './api'
 import { statusOf, type Attempt } from './attempts'
 import { ActivityLog } from './components/ActivityLog'
-import { ChangeTray } from './components/ChangeTray'
+import { CustomerPanel } from './components/CustomerPanel'
+import { CoinCup, DeliveryBin } from './components/Delivery'
 import { MachinePanel, type Highlight } from './components/MachinePanel'
 import { BURST, PaymentPanel } from './components/PaymentPanel'
 import { ProductGrid, type Selection } from './components/ProductGrid'
+import { Receipt } from './components/Receipt'
+import { LICENCES, PRODUCTS } from './products'
 import { recordOutcome, type Limits } from './rateWindow'
 import { diffMachine } from './supply'
 
@@ -50,6 +53,7 @@ export function App() {
     return () => clearInterval(timer)
   }, [refresh])
 
+  const slot = selection?.kind === 'product' ? selection.product.slot : null
   const item =
     selection?.kind === 'product' ? selection.product.name : selection?.kind === 'custom' ? 'Custom item' : null
   const price =
@@ -72,7 +76,16 @@ export function App() {
     )
     const at = Date.now()
     const attempts = outcomes.map(
-      (outcome): Attempt => ({ id: nextId.current++, at, customer: customerId, item, price, paid: amount, outcome }),
+      (outcome): Attempt => ({
+        id: nextId.current++,
+        at,
+        customer: customerId,
+        slot,
+        item,
+        price,
+        paid: amount,
+        outcome,
+      }),
     )
     setLimits((current) =>
       attempts.reduce(
@@ -112,34 +125,69 @@ export function App() {
         </div>
       </header>
 
-      <main className="layout">
-        <div className="column">
-          <ProductGrid
-            selection={selection}
-            onSelect={setSelection}
-            customPrice={customPrice}
-            onCustomPrice={setCustomPrice}
-          />
-          <PaymentPanel
-            customer={customer}
-            onCustomer={setCustomer}
-            limits={limits}
-            inserted={inserted}
-            onInsert={(pence) => setInserted((current) => [...current, pence])}
-            onReturn={() => setInserted([])}
-            item={item}
-            price={price}
-            canBuy={canBuy}
-            onBuy={() => void buy(1)}
-            onBurst={() => void buy(BURST)}
-          />
-        </div>
-        <div className="column">
-          <ChangeTray attempts={latest} />
+      <main className="scene">
+        <section className="machine" aria-label="Vending machine">
+          <div className="marquee" aria-hidden>
+            <span className="marquee-title">Drinks &amp; Snacks</span>
+            <span className="marquee-sub">Change in the fewest coins</span>
+          </div>
+          <div className="machine-body">
+            <ProductGrid selection={selection} onSelect={setSelection} />
+            <PaymentPanel
+              selection={selection}
+              online={online}
+              customPrice={customPrice}
+              onCustomPrice={setCustomPrice}
+              onSelectCustom={() => setSelection({ kind: 'custom' })}
+              inserted={inserted}
+              onInsert={(pence) => setInserted((current) => [...current, pence])}
+              onReturn={() => setInserted([])}
+              item={item}
+              price={price}
+              canBuy={canBuy}
+              onBuy={() => void buy(1)}
+              onBurst={() => void buy(BURST)}
+            />
+            <div className="outlets">
+              <DeliveryBin attempts={latest} />
+              <CoinCup attempts={latest} />
+            </div>
+          </div>
+          <div className="machine-base" aria-hidden />
+        </section>
+
+        <div className="side">
+          <CustomerPanel customer={customer} onCustomer={setCustomer} limits={limits} />
+          <Receipt attempts={latest} />
           <MachinePanel machine={machine} online={online} highlight={highlight} />
           <ActivityLog attempts={log} onClear={() => setLog([])} />
         </div>
       </main>
+
+      <footer className="credits">
+        Product photos from Wikimedia Commons, cut out and resized:{' '}
+        {PRODUCTS.map(({ slot, name, photo }, i) => {
+          const terms = LICENCES[photo.licence]
+          return (
+            <span key={slot}>
+              {i > 0 && ', '}
+              <a href={photo.page} target="_blank" rel="noreferrer">
+                {name}
+              </a>{' '}
+              (
+              {terms ? (
+                <a href={terms} target="_blank" rel="noreferrer">
+                  {photo.licence}
+                </a>
+              ) : (
+                photo.licence
+              )}
+              )
+            </span>
+          )
+        })}
+        .
+      </footer>
     </div>
   )
 }
