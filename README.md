@@ -124,7 +124,7 @@ None of them imports FastAPI, so each is tested without HTTP.
   The limit is decided before anyone knows whether the purchase will succeed, and counting failures stops a customer sending failing requests without limit.
   Attempts that are turned away are not counted, so retrying too early does not lock a client out for longer.
 - **The clock is injectable**, so the tests control time exactly rather than sleeping.
-- **The browser reaches the API through Vite's proxy**, so the API carries no CORS configuration.
+- **The browser reaches the API through a proxy**, Vite's locally and a Vercel route when deployed, so the API carries no CORS configuration.
   `VENDING_API_URL` points it somewhere other than `http://127.0.0.1:8000`.
 - **The page keeps its own copy of the rate window only to draw the meter.**
   It is rebuilt from the answers the page has seen, including `Retry-After`, and the server is the one that decides.
@@ -197,6 +197,12 @@ The API tests are organised around the hard problems, not around files.
 
 The client's tests cover the pieces that hold logic: reading each API answer, the rate meter, money formatting and the machine diff.
 
+## Deploying
+
+The web client deploys to Vercel as a static site, and Vercel forwards `/api/*` to the API running as one long-lived process on another host.
+The API is not a Vercel Function, because Vercel adds instances as traffic needs them, and each would be a separate machine with its own coins, cash box and limiter.
+[docs/deploy.md](docs/deploy.md) has the reasoning, the Vercel setup and the settings the API host needs.
+
 ## Assumptions made
 
 - **Prices arrive already discounted**, so the API takes the price with each purchase rather than holding a catalogue.
@@ -235,7 +241,9 @@ src/vending/
   rate_limit.py  per-customer sliding-window limiter
   api.py         FastAPI app and request and response models
 tests/           change against brute force, a threaded race, a fake clock, HTTP, a real server
+docs/deploy.md   Vercel for the client, one long-lived process for the API
 web/
   src/           React client: the machine, the receipt, the coin tubes, the activity log
-  scripts/       the palette gate
+  scripts/       the palette gate, and the check of VENDING_API_URL before a Vercel build
+  vercel.json    the Vercel build and the /api route
 ```

@@ -22,7 +22,7 @@ At low traffic, requests usually reuse one warm instance, so it looks right in a
 - **The rate limit stops being exact.**
   Each instance counts attempts on its own, so four attempts in five seconds can all be let through, and the README's "at most three in any five seconds" no longer holds.
 - **The 409 demo is not repeatable.**
-  The second £20 purchase, which should be refused because the first took every £2 coin, sells when it reaches a fresh instance.
+  The second £20 purchase of Mints, which should be refused because the first left too little change in the tubes, sells when it reaches a fresh instance.
 
 Moving the state to a shared store such as Redis or Postgres would fix all of this, but it rewrites the machine and the limiter around that store and adds a network round trip and a vendor to every purchase.
 It is the right move if the API ever needs more than one process, as the README's trade-offs say, and not before.
@@ -49,7 +49,11 @@ What matters is that there is exactly one machine:
 
 - one process, with one uvicorn worker, which is the default, so never `--workers`;
 - one instance or replica, with autoscaling off;
-- no sleeping or scale to zero, since a cold start is a restart and a restart refills the machine.
+- ideally no sleeping or scale to zero, since a cold start is a restart and a restart refills the machine.
+
+Sleeping is the one rule a demo can bend.
+A host that sleeps still runs a single machine, and waking it only refills it, as a deploy does.
+What must never happen is a second instance, because two machines at once give wrong answers rather than a fresh start.
 
 The commands, from the repository root:
 
@@ -64,9 +68,9 @@ uv run --frozen --no-dev uvicorn vending.api:app --host 0.0.0.0 --port $PORT  # 
 Settings that matter on the common hosts:
 
 - **Render.**
-  Use a paid instance type, since a free web service spins down after 15 minutes without traffic.
   Keep the instance count at one.
   Render adds uv when it finds `uv.lock` in the root directory.
+  A free web service spins down after 15 minutes without traffic and takes about a minute to wake on the next request, and a paid instance type stays up.
 - **Railway.**
   Keep the default of one replica and leave Serverless off.
 - **Fly.io.**
@@ -122,7 +126,8 @@ If `link` does not ask for the code directory, set **Root Directory** to `web` i
   Point Preview at a second API instance to keep them apart.
 - **Deployment Protection covers the site, not the API.**
   Depending on the team's default, previews can sit behind Vercel Authentication, while the API host stays public.
-- **When the API is down**, Vercel answers `/api/*` with a 502 or 504, and the page shows **API offline** and disables **Buy** until it is back.
+- **When the API is down or asleep**, Vercel answers `/api/*` with a 502 or 504, and the page shows **API offline**, says the API may be waking up, and disables **Buy**.
+  It keeps polling, one request at a time, and reconnects by itself when the API answers.
 - **To accept only traffic from Vercel**, a route transform can add a secret header to every forwarded request, as in Vercel's guide to restricting an origin.
   The API would then need a check for that header, with `/docs` and `/openapi.json` exempt or the docs link moved behind the proxy.
   That is a code change to the API and is not done here.
