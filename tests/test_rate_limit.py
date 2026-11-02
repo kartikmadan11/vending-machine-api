@@ -3,19 +3,6 @@ import pytest
 from vending.rate_limit import RateLimited, RateLimiter
 
 
-class FakeClock:
-    def __init__(self) -> None:
-        self.now = 1000.0
-
-    def __call__(self) -> float:
-        return self.now
-
-
-@pytest.fixture
-def clock():
-    return FakeClock()
-
-
 @pytest.fixture
 def limiter(clock):
     return RateLimiter(limit=3, window=5.0, clock=clock)
