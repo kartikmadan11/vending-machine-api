@@ -29,10 +29,17 @@ export function App() {
   const [pending, setPending] = useState(false)
   const lastMachine = useRef<MachineState | null>(null)
   const nextId = useRef(1)
+  // Numbers each GET /machine, and the newest that has answered.
+  const asked = useRef(0)
+  const answered = useRef(0)
 
   const refresh = useCallback(async () => {
+    const request = ++asked.current
     try {
       const next = await getMachine()
+      // Over a real network answers can arrive out of order, and an older one must not undo a newer one.
+      if (request < answered.current) return
+      answered.current = request
       const previous = lastMachine.current
       lastMachine.current = next
       if (previous) {
@@ -42,6 +49,8 @@ export function App() {
       setMachine(next)
       setOnline(true)
     } catch {
+      if (request < answered.current) return
+      answered.current = request
       setOnline(false)
     }
   }, [])
@@ -49,7 +58,10 @@ export function App() {
   // Poll so the panel also shows purchases made elsewhere, such as with curl.
   useEffect(() => {
     void refresh()
-    const timer = setInterval(() => void refresh(), POLL_MS)
+    // A poll still waiting, as while a sleeping API wakes up, is not joined by another.
+    const timer = setInterval(() => {
+      if (answered.current === asked.current) void refresh()
+    }, POLL_MS)
     return () => clearInterval(timer)
   }, [refresh])
 

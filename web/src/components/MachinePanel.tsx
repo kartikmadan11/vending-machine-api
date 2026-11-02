@@ -26,9 +26,20 @@ export function MachinePanel({ machine, online, highlight }: Props) {
 
       {online === false && (
         <div className="callout tone-danger offline">
-          <strong>The API is not running</strong>
-          <p className="callout-body">Run this in another terminal, and the page reconnects.</p>
-          <code className="callout-code">{START_COMMAND}</code>
+          {START_COMMAND ? (
+            <>
+              <strong>The API is not running</strong>
+              <p className="callout-body">Run this in another terminal, and the page reconnects.</p>
+              <code className="callout-code">{START_COMMAND}</code>
+            </>
+          ) : (
+            <>
+              <strong>The API is not answering</strong>
+              <p className="callout-body">
+                It may be waking up, which can take a minute. The page keeps trying and reconnects by itself.
+              </p>
+            </>
+          )}
         </div>
       )}
 

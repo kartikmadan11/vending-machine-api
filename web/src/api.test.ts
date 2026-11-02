@@ -66,6 +66,14 @@ describe('purchase', () => {
     expect(await purchase(request, respond(500, ''))).toEqual({ kind: 'offline' })
   })
 
+  it("treats a deployed proxy's gateway error as offline, even with a body", async () => {
+    for (const status of [502, 503, 504]) {
+      expect(await purchase(request, respond(status, 'An error occurred with this application.'))).toEqual({
+        kind: 'offline',
+      })
+    }
+  })
+
   it('reports a server error that has a body as a rejection, not as offline', async () => {
     expect(await purchase(request, respond(500, 'Internal Server Error'))).toEqual({
       kind: 'rejected',

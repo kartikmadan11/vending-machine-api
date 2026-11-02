@@ -60,7 +60,7 @@ function Single({ attempt }: { attempt: Attempt }) {
           {outcome.code}: {outcome.message}
         </code>
       )}
-      {outcome.kind === 'offline' && <code className="callout-code">{START_COMMAND}</code>}
+      {outcome.kind === 'offline' && START_COMMAND && <code className="callout-code">{START_COMMAND}</code>}
     </div>
   )
 }
@@ -68,7 +68,11 @@ function Single({ attempt }: { attempt: Attempt }) {
 function Explanation({ attempt }: { attempt: Attempt }) {
   const { outcome } = attempt
   if (outcome.kind === 'offline') {
-    return <>Run this in another terminal and try again.</>
+    return START_COMMAND ? (
+      <>Run this in another terminal and try again.</>
+    ) : (
+      <>It may be waking up, which can take a minute. Try again shortly.</>
+    )
   }
   if (outcome.kind === 'sold') return null
   switch (outcome.code) {
