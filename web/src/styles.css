@@ -1,0 +1,1059 @@
+/* Every colour in the app is a named token in this block. scripts/check-palette.mjs fails the
+   build on a raw colour anywhere else, so restyling is this block and nothing more. */
+:root {
+  /* The platform's own monospace, so nothing is downloaded: SF Mono on a Mac, Consolas on
+     Windows. */
+  --vend-font: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, Consolas, 'Liberation Mono',
+    monospace;
+
+  --vend-bg: #09090b;
+  --vend-panel: #121215;
+  /* Hover and lifted surfaces. */
+  --vend-raised: #18181b;
+  --vend-line: #27272a;
+  --vend-text: #f4f4f5;
+  /* 7.3:1 on the panel. Hierarchy comes from size and tracking rather than a dimmer grey,
+     because anything dimmer fails contrast at 10px. */
+  --vend-muted: #a1a1aa;
+
+  /* Three accents, because the electric blue is a fill and not a foreground: white on it
+     clears 7.98:1, but the colour itself reads 2.49:1 against the canvas. */
+  --vend-accent: #818cf8;
+  --vend-accent-fill: #3b00ff;
+  --vend-focus: #6366f1;
+  /* The chosen item. The accent at 18% over the panel, worked out rather than eyeballed, so
+     text holds 13.1:1 on it and muted holds 5.6:1. */
+  --vend-selected: #26283e;
+  /* Coins leaving the machine. Separate from the accent so retuning one cannot hide the other. */
+  --vend-flash: #393d64;
+
+  /* One colour per answer the API can give, each above 6:1 on the panel. Amber rather than rose
+     for a 400, because the customer is asked to pay more, not refused. */
+  --vend-sold: #34d399;
+  --vend-short: #fbbf24;
+  --vend-refused: #fb7185;
+  --vend-limit: #38bdf8;
+
+  /* The metals, which are the one place colour is decoration: a 2p has to look like a 2p. */
+  --vend-copper-light: #f6c9a3;
+  --vend-copper-dark: #b6622c;
+  --vend-copper-rim: #8c4a21;
+  --vend-copper-ink: #55290b;
+  --vend-silver-light: #ffffff;
+  --vend-silver-dark: #adb4bd;
+  --vend-silver-rim: #868d97;
+  --vend-silver-ink: #343a44;
+  --vend-gold-light: #fbe7a6;
+  --vend-gold-dark: #c18f2a;
+  --vend-gold-rim: #93691b;
+  --vend-gold-ink: #553e0e;
+
+  /* The Bank of England's colours for each note. White on the lightest still reads 5.4:1. */
+  --vend-note-5: #1f6f66;
+  --vend-note-10: #a8521d;
+  --vend-note-20: #5f3b8c;
+  --vend-note-ink: #ffffff;
+
+  color-scheme: dark;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--vend-bg);
+  color: var(--vend-text);
+  font-family: var(--vend-font);
+  font-size: 13px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+
+button,
+input {
+  font: inherit;
+  color: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
+
+:focus-visible {
+  outline: 2px solid var(--vend-focus);
+  outline-offset: 2px;
+}
+
+/* Status tones, shared by badges and callouts. */
+.tone-success {
+  --tone: var(--vend-sold);
+}
+.tone-warning {
+  --tone: var(--vend-short);
+}
+.tone-danger {
+  --tone: var(--vend-refused);
+}
+.tone-limit {
+  --tone: var(--vend-limit);
+}
+.tone-neutral {
+  --tone: var(--vend-muted);
+}
+
+/* The small uppercase label used for secondary text throughout. */
+.micro,
+.hint,
+.text-button,
+.field-label,
+.display-label,
+.total-label {
+  color: var(--vend-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+}
+
+/* Page */
+
+.app {
+  max-width: 1320px;
+  margin: 0 auto;
+  padding: 12px 16px 32px;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--vend-line);
+}
+
+.brand {
+  display: flex;
+  align-items: baseline;
+  gap: 16px;
+  min-width: 0;
+}
+
+.brand h1 {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.brand p {
+  overflow: hidden;
+  margin: 0;
+  color: var(--vend-muted);
+  font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.topbar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+/* A chip: the status, the docs link and the customers share one geometry. */
+.chip,
+.status,
+.link {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: none;
+  color: var(--vend-muted);
+  font-size: 10px;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  text-decoration: none;
+  white-space: nowrap;
+  transition:
+    border-color 0.1s,
+    color 0.1s;
+}
+
+.link:hover,
+.chip:hover {
+  border-color: var(--vend-accent);
+  color: var(--vend-accent);
+}
+
+.status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--vend-muted);
+}
+
+.status[data-state='online'] .status-dot {
+  background: var(--vend-sold);
+}
+
+.status[data-state='offline'] {
+  border-color: color-mix(in srgb, var(--vend-refused) 50%, transparent);
+  color: var(--vend-refused);
+}
+
+.status[data-state='offline'] .status-dot {
+  background: var(--vend-refused);
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: minmax(0, 7fr) minmax(0, 5fr);
+  gap: 12px;
+  align-items: start;
+}
+
+.column {
+  display: grid;
+  gap: 12px;
+  min-width: 0;
+}
+
+/* Panels */
+
+.card {
+  padding: 0 12px 12px;
+  border: 1px solid var(--vend-line);
+  border-radius: 4px;
+  background: var(--vend-panel);
+}
+
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  min-height: 32px;
+  margin: 0 -12px 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--vend-line);
+}
+
+.card-head h2 {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.step {
+  color: var(--vend-muted);
+  font-weight: 500;
+}
+
+.hint {
+  margin: 0;
+  text-align: right;
+}
+
+.empty {
+  margin: 0;
+  color: var(--vend-muted);
+}
+
+/* 1. Products */
+
+.products {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.product {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-content: start;
+  gap: 2px 8px;
+  padding: 8px 10px 10px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-bg);
+  text-align: left;
+  transition:
+    background 0.1s,
+    border-color 0.1s;
+}
+
+.product:hover {
+  border-color: var(--vend-muted);
+  background: var(--vend-raised);
+}
+
+.product[aria-pressed='true'],
+.product[data-selected='true'] {
+  border-color: var(--vend-accent);
+  background: var(--vend-selected);
+}
+
+/* The slot a real machine prints beside each row: A1, A2 and so on. */
+.product-slot {
+  margin-bottom: 4px;
+}
+
+.product[aria-pressed='true'] .product-slot,
+.product[data-selected='true'] .product-slot {
+  color: var(--vend-accent);
+}
+
+.product-price {
+  font-weight: 600;
+  text-align: right;
+}
+
+.product-name,
+.product-detail,
+.custom-input {
+  grid-column: 1 / -1;
+}
+
+.product-name {
+  overflow: hidden;
+  font-weight: 600;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-detail {
+  color: var(--vend-muted);
+  font-size: 12px;
+}
+
+.product-custom {
+  cursor: text;
+}
+
+.custom-input {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.custom-input input {
+  width: 100%;
+  min-width: 0;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-panel);
+  font-weight: 600;
+}
+
+.custom-input input::placeholder,
+.chip-input::placeholder {
+  color: var(--vend-muted);
+  font-weight: 400;
+}
+
+.custom-input input:focus,
+.chip-input:focus {
+  border-color: var(--vend-focus);
+  outline: none;
+  box-shadow: 0 0 0 1px var(--vend-focus);
+}
+
+.custom-unit {
+  color: var(--vend-muted);
+}
+
+/* 2. Pay */
+
+.pay-section {
+  margin-bottom: 16px;
+}
+
+.section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.field-label {
+  display: block;
+}
+
+.pay-section > .field-label {
+  margin-bottom: 8px;
+}
+
+.customers {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+/* Customer ids are case-sensitive, so they are shown as typed rather than uppercased. */
+.customers .chip {
+  font-size: 12px;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+.chip[aria-pressed='true'] {
+  border-color: var(--vend-accent);
+  background: var(--vend-selected);
+  color: var(--vend-accent);
+}
+
+.chip-input {
+  width: 120px;
+  height: 28px;
+  padding: 0 10px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-bg);
+  font-size: 12px;
+}
+
+.chip-input:not(:placeholder-shown) {
+  border-color: var(--vend-accent);
+  color: var(--vend-accent);
+}
+
+.meter {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--vend-muted);
+  font-size: 11px;
+}
+
+.pips {
+  display: inline-flex;
+  gap: 3px;
+}
+
+.pip {
+  width: 14px;
+  height: 4px;
+  background: var(--vend-line);
+}
+
+.pip.on {
+  background: var(--vend-sold);
+}
+
+.meter[data-state='full'] {
+  color: var(--vend-short);
+}
+
+.meter[data-state='full'] .pip.on {
+  background: var(--vend-short);
+}
+
+.meter[data-state='blocked'] {
+  color: var(--vend-limit);
+}
+
+.meter[data-state='blocked'] .pip.on {
+  background: var(--vend-limit);
+}
+
+.money-slot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px 16px;
+}
+
+.coin-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.coin-button {
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  line-height: 0;
+  transition: transform 0.1s;
+}
+
+.coin-button svg {
+  width: calc(var(--coin) * 1px);
+  height: calc(var(--coin) * 1px);
+}
+
+.coin-button:hover {
+  transform: translateY(-2px);
+}
+
+.coin-button:active {
+  transform: translateY(0) scale(0.95);
+}
+
+.note-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.note {
+  width: 56px;
+  height: 32px;
+  border: 0;
+  border-radius: 2px;
+  background: var(--note);
+  color: var(--vend-note-ink);
+  font-weight: 600;
+  transition:
+    filter 0.1s,
+    transform 0.1s;
+}
+
+.note:hover {
+  filter: brightness(1.2);
+}
+
+.note:active {
+  transform: scale(0.96);
+}
+
+.note-5 {
+  --note: var(--vend-note-5);
+}
+
+.note-10 {
+  --note: var(--vend-note-10);
+}
+
+.note-20 {
+  --note: var(--vend-note-20);
+}
+
+.display {
+  display: grid;
+  grid-template-columns: 1.25fr 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-bg);
+}
+
+.display-cell {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+}
+
+.display-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.display-value {
+  font-size: 20px;
+  font-weight: 600;
+  line-height: 1.3;
+}
+
+.display-main .display-value {
+  font-size: 26px;
+}
+
+.display-short {
+  color: var(--vend-short);
+}
+
+.actions {
+  display: flex;
+  gap: 8px;
+}
+
+.button {
+  height: 36px;
+  padding: 0 14px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: none;
+  color: var(--vend-text);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  transition:
+    border-color 0.1s,
+    color 0.1s,
+    filter 0.1s;
+}
+
+.button:hover:not(:disabled) {
+  border-color: var(--vend-accent);
+  color: var(--vend-accent);
+}
+
+.button:disabled {
+  opacity: 0.4;
+}
+
+/* The one accent fill on the screen, so nothing else competes with it as the thing to press. */
+.button-primary {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  border-color: var(--vend-accent-fill);
+  background: var(--vend-accent-fill);
+  color: var(--vend-note-ink);
+  font-weight: 600;
+  text-overflow: ellipsis;
+}
+
+.button-primary:hover:not(:disabled) {
+  border-color: var(--vend-accent-fill);
+  color: var(--vend-note-ink);
+  filter: brightness(1.25);
+}
+
+/* Uppercase labels would turn 38p into 38P, so an amount inside one keeps its own case. */
+.amount {
+  text-transform: none;
+}
+
+.button-ghost {
+  border-style: dashed;
+  color: var(--vend-muted);
+}
+
+.text-button {
+  padding: 0;
+  border: 0;
+  background: none;
+}
+
+.text-button:hover:not(:disabled) {
+  color: var(--vend-accent);
+}
+
+.text-button:disabled {
+  opacity: 0.4;
+}
+
+/* 3. Change */
+
+.tray {
+  margin: 0;
+  padding: 12px;
+  border: 1px dashed var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-bg);
+}
+
+.tray-empty {
+  display: grid;
+  place-items: center;
+  min-height: 96px;
+  color: var(--vend-muted);
+}
+
+.tray-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px 10px;
+}
+
+.tray-meta {
+  color: var(--vend-muted);
+}
+
+.tray-coins {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.tray-coin {
+  animation: drop 0.4s cubic-bezier(0.2, 0.8, 0.3, 1.15) both;
+}
+
+.tray-coin:nth-child(2) {
+  animation-delay: 0.05s;
+}
+.tray-coin:nth-child(3) {
+  animation-delay: 0.1s;
+}
+.tray-coin:nth-child(4) {
+  animation-delay: 0.15s;
+}
+.tray-coin:nth-child(n + 5) {
+  animation-delay: 0.2s;
+}
+
+@keyframes drop {
+  from {
+    opacity: 0;
+    transform: translateY(-14px) scale(0.9);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 20px;
+  padding: 0 6px;
+  border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+  color: var(--tone);
+  min-width: 36px;
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The same shape as the badge, a size up. */
+.callout {
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--tone) 50%, transparent);
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--tone) 10%, transparent);
+}
+
+.callout-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.callout-head strong,
+.offline strong {
+  color: var(--tone);
+  font-weight: 600;
+}
+
+.callout-body {
+  margin: 6px 0 0;
+}
+
+.callout-code {
+  display: block;
+  margin-top: 8px;
+  padding: 6px 8px;
+  border-radius: 2px;
+  background: var(--vend-bg);
+  color: var(--vend-muted);
+  font-size: 11px;
+  overflow-wrap: anywhere;
+}
+
+.offline {
+  margin-bottom: 12px;
+}
+
+.burst {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.burst-row {
+  display: grid;
+  grid-template-columns: 52px auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  height: 32px;
+  border-top: 1px solid var(--vend-line);
+}
+
+.burst-row:first-child {
+  border-top: 0;
+}
+
+.burst-row .badge {
+  justify-self: start;
+}
+
+.burst-title {
+  font-weight: 600;
+}
+
+.burst-detail {
+  overflow: hidden;
+  color: var(--vend-muted);
+  text-align: right;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Inside the machine */
+
+.supply {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.supply-row {
+  position: relative;
+  display: grid;
+  grid-template-columns: 22px 28px minmax(0, 1fr) 64px;
+  align-items: center;
+  gap: 10px;
+  height: 30px;
+  padding: 0 4px;
+  border-top: 1px solid color-mix(in srgb, var(--vend-line) 60%, transparent);
+}
+
+.supply-row:first-child {
+  border-top: 0;
+}
+
+.supply-row > :not(.supply-flash) {
+  position: relative;
+}
+
+.supply-flash {
+  position: absolute;
+  inset: 0;
+  background: var(--vend-flash);
+  animation: flash 1.6s ease-out forwards;
+  pointer-events: none;
+}
+
+@keyframes flash {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.supply-label {
+  font-weight: 600;
+}
+
+.supply-pips {
+  display: grid;
+  grid-template-columns: repeat(10, minmax(0, 1fr));
+  gap: 3px;
+}
+
+.supply-pip {
+  height: 8px;
+  background: var(--vend-line);
+}
+
+.supply-pip.on.copper {
+  background: var(--vend-copper-dark);
+}
+
+.supply-pip.on.silver {
+  background: var(--vend-silver-dark);
+}
+
+.supply-pip.on.gold {
+  background: var(--vend-gold-dark);
+}
+
+.supply-count {
+  color: var(--vend-muted);
+  font-size: 12px;
+  text-align: right;
+}
+
+.supply-empty {
+  color: var(--vend-refused);
+  font-weight: 600;
+}
+
+.totals {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 12px;
+}
+
+.total {
+  position: relative;
+  display: grid;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--vend-line);
+  border-radius: 2px;
+  background: var(--vend-bg);
+}
+
+.total > :not(.supply-flash) {
+  position: relative;
+}
+
+.total-value {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Activity */
+
+.log {
+  display: grid;
+  max-height: 360px;
+  margin: -12px -12px -12px;
+  padding: 0 12px;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-color: var(--vend-line) transparent;
+  scrollbar-width: thin;
+}
+
+.log-row {
+  display: grid;
+  grid-template-columns: 64px minmax(0, 1fr) auto;
+  align-items: start;
+  gap: 12px;
+  padding: 8px 0;
+  border-top: 1px solid color-mix(in srgb, var(--vend-line) 60%, transparent);
+}
+
+.log-row:first-child {
+  border-top: 0;
+}
+
+.log-time {
+  padding-top: 1px;
+  color: var(--vend-muted);
+  font-size: 12px;
+}
+
+.log-main {
+  display: grid;
+  min-width: 0;
+}
+
+.log-customer {
+  font-weight: 600;
+}
+
+.log-detail {
+  color: var(--vend-muted);
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
+/* Smaller screens */
+
+@media (max-width: 1040px) {
+  .layout {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+@media (max-width: 760px) {
+  .brand p {
+    display: none;
+  }
+}
+
+@media (max-width: 640px) {
+  .app {
+    padding: 10px 10px 24px;
+  }
+
+  .topbar {
+    flex-wrap: wrap;
+  }
+
+  .card-head {
+    flex-wrap: wrap;
+    padding-top: 6px;
+    padding-bottom: 6px;
+  }
+
+  .hint {
+    flex-basis: 100%;
+    text-align: left;
+  }
+
+  .products {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .product-custom {
+    grid-column: 1 / -1;
+  }
+
+  .coin-buttons {
+    gap: 6px;
+  }
+
+  .coin-button svg {
+    width: calc(var(--coin) * 0.74px);
+    height: calc(var(--coin) * 0.74px);
+  }
+
+  .display {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .display-main {
+    grid-column: 1 / -1;
+  }
+
+  .actions {
+    flex-wrap: wrap;
+  }
+
+  .button-primary {
+    flex-basis: 100%;
+    order: -1;
+  }
+
+  .actions .button:not(.button-primary) {
+    flex: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

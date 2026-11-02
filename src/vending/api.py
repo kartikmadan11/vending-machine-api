@@ -114,7 +114,7 @@ def create_app(
     machine = VendingMachine() if machine is None else machine
     limiter = RateLimiter() if limiter is None else limiter
     app = FastAPI(
-        title="Vending machine",
+        title="vending-machine-api",
         summary="Pays out the fewest coins from a supply that is never refilled.",
         version="0.1.0",
     )

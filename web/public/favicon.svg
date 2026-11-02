@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- A bold "v" drawn as a shape rather than set in a font, since an SVG favicon
+       cannot count on any font being installed. Both arms run parallel, as a
+       monospace v's do. -->
+  <rect width="64" height="64" fill="#3b00ff"/>
+  <path fill="#fff" d="M13 16H23.5L32 38.25L40.5 16H51L38 50H26Z"/>
+</svg>
