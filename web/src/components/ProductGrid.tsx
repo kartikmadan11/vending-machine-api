@@ -1,17 +1,14 @@
 import { formatPence } from '../money'
-import { PRODUCTS, type Product } from '../products'
-
-export type Selection = { kind: 'product'; product: Product } | { kind: 'custom' } | null
+import { PRODUCTS, SHELVES } from '../products'
 
 interface Props {
-  selection: Selection
-  onSelect: (selection: Selection) => void
+  /** The code on the keypad. Tapping a product types its code there. */
+  code: string
+  onSelect: (code: string) => void
 }
 
-const SHELVES = [...new Set(PRODUCTS.map((p) => p.slot[0]))]
-
 /** The glass front: one shelf per row letter, each product sitting in its spiral. */
-export function ProductGrid({ selection, onSelect }: Props) {
+export function ProductGrid({ code, onSelect }: Props) {
   return (
     <section className="window" aria-labelledby="choose-heading">
       <h2 id="choose-heading" className="sr-only">
@@ -25,9 +22,9 @@ export function ProductGrid({ selection, onSelect }: Props) {
                 key={product.slot}
                 type="button"
                 className="slot"
-                aria-pressed={selection?.kind === 'product' && selection.product.slot === product.slot}
+                aria-pressed={product.slot === code}
                 aria-label={`${product.slot}, ${product.name}, ${product.detail}, ${formatPence(product.price)}`}
-                onClick={() => onSelect({ kind: 'product', product })}
+                onClick={() => onSelect(product.slot)}
               >
                 <span className="slot-stage" aria-hidden>
                   <Coil depth="back" />

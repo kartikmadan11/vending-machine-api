@@ -1,26 +1,21 @@
 import type { CSSProperties } from 'react'
+import { press } from '../keypad'
 import { formatPence, coinLabel, coinSize, NOTES, UK_COINS } from '../money'
+import { NUMBERS, SHELVES, type Product } from '../products'
 import { LIMIT } from '../rateWindow'
 import { Coin } from './Coin'
-import type { Selection } from './ProductGrid'
 
 export const BURST = 4
 
-/** The most digits the custom price takes, so a price stays well inside what the API accepts. */
-const MAX_DIGITS = 7
-const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', 'C', '0', '⌫'] as const
-
 interface Props {
-  selection: Selection
+  code: string
+  onCode: (code: string) => void
+  /** The product the code names, once it is finished. */
+  product: Product | null
   online: boolean | null
-  customPrice: string
-  onCustomPrice: (pence: string) => void
-  onSelectCustom: () => void
   inserted: number[]
   onInsert: (pence: number) => void
   onReturn: () => void
-  item: string | null
-  price: number | null
   canBuy: boolean
   onBuy: () => void
   onBurst: () => void
@@ -28,7 +23,7 @@ interface Props {
 
 /** The column beside the glass: display, keypad, coin slot, note reader and buttons. */
 export function PaymentPanel(props: Props) {
-  const { inserted, onInsert, onReturn, item, price, canBuy } = props
+  const { product, inserted, onInsert, onReturn, canBuy } = props
   const paid = inserted.reduce((total, pence) => total + pence, 0)
 
   return (
@@ -36,17 +31,9 @@ export function PaymentPanel(props: Props) {
       <h2 id="pay-heading" className="sr-only">
         Pay
       </h2>
-      <Display selection={props.selection} online={props.online} paid={paid} price={price} />
+      <Display code={props.code} product={product} online={props.online} paid={paid} />
 
-      <Keypad
-        value={props.customPrice}
-        selected={props.selection?.kind === 'custom'}
-        onChange={(pence) => {
-          props.onSelectCustom()
-          props.onCustomPrice(pence.replace(/\D/g, '').slice(0, MAX_DIGITS))
-        }}
-        onFocus={props.onSelectCustom}
-      />
+      <Keypad code={props.code} onCode={props.onCode} />
 
       <div className="money" role="group" aria-labelledby="money-label">
         <span className="panel-label" id="money-label">
@@ -88,11 +75,11 @@ export function PaymentPanel(props: Props) {
 
       <div className="actions">
         <button type="button" className="vend-button" onClick={props.onBuy} disabled={!canBuy}>
-          {item === null || price === null ? (
+          {product === null ? (
             'Choose an item'
           ) : (
             <>
-              Buy {item} for <span className="amount">{formatPence(price)}</span>
+              Buy {product.name} for <span className="amount">{formatPence(product.price)}</span>
             </>
           )}
         </button>
@@ -116,22 +103,23 @@ export function PaymentPanel(props: Props) {
 }
 
 interface DisplayProps {
-  selection: Selection
+  code: string
+  product: Product | null
   online: boolean | null
   paid: number
-  price: number | null
 }
 
-function Display({ selection, online, paid, price }: DisplayProps) {
+function Display({ code, product, online, paid }: DisplayProps) {
+  const price = product?.price ?? null
   const due = price === null ? null : paid - price
   const short = due !== null && due < 0
   const heading =
     online === false
       ? 'Out of service'
-      : selection?.kind === 'product'
-        ? `${selection.product.slot} ${selection.product.name}, ${selection.product.detail}`
-        : selection?.kind === 'custom'
-          ? 'Custom price'
+      : product
+        ? `${product.slot} ${product.name}, ${product.detail}`
+        : code !== ''
+          ? `Shelf ${code}, now its number`
           : 'Choose an item'
   return (
     <div className="display" aria-live="polite" data-offline={online === false}>
@@ -156,45 +144,34 @@ function Display({ selection, online, paid, price }: DisplayProps) {
   )
 }
 
-interface KeypadProps {
-  value: string
-  selected: boolean
-  onChange: (pence: string) => void
-  onFocus: () => void
-}
-
-/** Any whole number of pence, typed on the keys or into the field. */
-function Keypad({ value, selected, onChange, onFocus }: KeypadProps) {
-  function press(key: (typeof KEYS)[number]) {
-    if (key === 'C') onChange('')
-    else if (key === '⌫') onChange(value.slice(0, -1))
-    else onChange(value + key)
-  }
+/** Types a product's code: its shelf letter, then its number along the shelf. */
+function Keypad({ code, onCode }: { code: string; onCode: (code: string) => void }) {
   return (
-    <div className="keypad" data-selected={selected}>
-      <label className="keypad-screen">
-        <span className="panel-label">Custom price</span>
-        <span className="keypad-field">
-          <input
-            inputMode="numeric"
-            placeholder="Any pence"
-            aria-label="Custom price in pence"
-            value={value}
-            onFocus={onFocus}
-            onChange={(e) => onChange(e.target.value)}
-          />
-          <span className="keypad-unit">p</span>
+    <div className="keypad" data-entered={code !== ''}>
+      <div className="keypad-screen">
+        <span className="panel-label" id="keypad-label">
+          Enter a code
         </span>
-      </label>
-      <div className="keys" role="group" aria-label="Keypad">
-        {KEYS.map((key) => (
-          <button
-            key={key}
-            type="button"
-            className={`key${key === 'C' || key === '⌫' ? ' key-edit' : ''}`}
-            aria-label={key === 'C' ? 'Clear the custom price' : key === '⌫' ? 'Delete the last digit' : undefined}
-            onClick={() => press(key)}
-          >
+        {/* The display above says the same in words. */}
+        <span className="keypad-code" aria-hidden>
+          {[0, 1].map((i) => (
+            <span key={i} className="keypad-char" data-empty={code[i] === undefined}>
+              {code[i] ?? '-'}
+            </span>
+          ))}
+        </span>
+      </div>
+      <div className="keys" role="group" aria-labelledby="keypad-label">
+        {SHELVES.map((key) => (
+          <button key={key} type="button" className="key" onClick={() => onCode(press(code, key))}>
+            {key}
+          </button>
+        ))}
+        <button type="button" className="key key-clear" onClick={() => onCode('')}>
+          Clear
+        </button>
+        {NUMBERS.map((key) => (
+          <button key={key} type="button" className="key" onClick={() => onCode(press(code, key))}>
             {key}
           </button>
         ))}

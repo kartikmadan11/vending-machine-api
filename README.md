@@ -24,17 +24,19 @@ The page talks only to the API, so everything it shows is the API's own answer.
 ## The two-minute demo
 
 **A sale.**
-Choose Cola (A2, £1.20), insert a £2 coin and press **Buy**.
+Press A and then 2 on the keypad for Cola (£1.20), or tap it, then insert a £2 coin and press **Buy**.
 80p drops into the cup as 50p, 20p and 10p, and Inside the machine shows exactly those three coins leave their tubes.
 
 **Not enough money.**
 Choose Flat white (A4, £2.15), insert £1 and press **Buy**.
 The answer is 400, nothing is taken, and the £1 is still inserted.
+Press **Return money** to take it back.
 
 **No exact change.**
-Switch to bob, press 0 on the keypad for a custom price, insert the £20 note and press **Buy**, twice.
-The first pays out ten £2 coins and empties them.
-The second cannot make £20 from what is left, so it is refused with 409 and the machine is unchanged.
+Switch to bob, choose Mints (B4, 38p), insert the £20 note and press **Buy**, twice.
+The first pays out £19.62 in 13 coins, nine of them £2.
+Less than £19.62 is left in the tubes, so the second is refused with 409 and the machine is unchanged.
+Press **Return money** to take the note back.
 
 **The rate limit.**
 Switch to carol, choose Mints and press **Send 4 at once**.
@@ -73,7 +75,8 @@ The page in `web/` is there to drive it and to make each answer visible, not to 
 
 **It looks like a vending machine.**
 The products stand in wire spirals behind glass, each priced on the shelf rail under its slot code.
-You pay through the coin slot and the note reader, and the keypad takes a custom price.
+You choose by tapping a product or by typing its code on the keypad, the shelf letter and then its number.
+You pay through the coin slot and the note reader.
 What you buy drops into the bin and the change lands in the cup, while the panels beside the machine say the same in words.
 The product photos come from Wikimedia Commons, and each one is credited and linked under the page.
 

@@ -6,7 +6,7 @@ import { CustomerPanel } from './components/CustomerPanel'
 import { CoinCup, DeliveryBin } from './components/Delivery'
 import { MachinePanel, type Highlight } from './components/MachinePanel'
 import { BURST, PaymentPanel } from './components/PaymentPanel'
-import { ProductGrid, type Selection } from './components/ProductGrid'
+import { ProductGrid } from './components/ProductGrid'
 import { Receipt } from './components/Receipt'
 import { LICENCES, PRODUCTS } from './products'
 import { recordOutcome, type Limits } from './rateWindow'
@@ -16,8 +16,8 @@ const POLL_MS = 2000
 const LOG_SIZE = 50
 
 export function App() {
-  const [selection, setSelection] = useState<Selection>(null)
-  const [customPrice, setCustomPrice] = useState('')
+  // The code on the keypad is the choice, as on a real machine. Tapping a product types its code.
+  const [code, setCode] = useState('')
   const [customer, setCustomer] = useState('alice')
   const [inserted, setInserted] = useState<number[]>([])
   const [limits, setLimits] = useState<Limits>({})
@@ -53,21 +53,14 @@ export function App() {
     return () => clearInterval(timer)
   }, [refresh])
 
-  const slot = selection?.kind === 'product' ? selection.product.slot : null
-  const item =
-    selection?.kind === 'product' ? selection.product.name : selection?.kind === 'custom' ? 'Custom item' : null
-  const price =
-    selection?.kind === 'product'
-      ? selection.product.price
-      : selection?.kind === 'custom' && customPrice !== ''
-        ? Number(customPrice)
-        : null
+  const product = PRODUCTS.find((p) => p.slot === code) ?? null
   const paid = inserted.reduce((total, pence) => total + pence, 0)
   const customerId = customer.trim()
-  const canBuy = item !== null && price !== null && customerId !== '' && !pending && online !== false
+  const canBuy = product !== null && customerId !== '' && !pending && online !== false
 
   async function buy(times: number) {
-    if (item === null || price === null) return
+    if (product === null) return
+    const { price } = product
     // A burst with nothing inserted pays the exact price each time.
     const amount = times > 1 && paid === 0 ? price : paid
     setPending(true)
@@ -80,9 +73,7 @@ export function App() {
         id: nextId.current++,
         at,
         customer: customerId,
-        slot,
-        item,
-        price,
+        product,
         paid: amount,
         outcome,
       }),
@@ -132,18 +123,15 @@ export function App() {
             <span className="marquee-sub">Change in the fewest coins</span>
           </div>
           <div className="machine-body">
-            <ProductGrid selection={selection} onSelect={setSelection} />
+            <ProductGrid code={code} onSelect={setCode} />
             <PaymentPanel
-              selection={selection}
+              code={code}
+              onCode={setCode}
+              product={product}
               online={online}
-              customPrice={customPrice}
-              onCustomPrice={setCustomPrice}
-              onSelectCustom={() => setSelection({ kind: 'custom' })}
               inserted={inserted}
               onInsert={(pence) => setInserted((current) => [...current, pence])}
               onReturn={() => setInserted([])}
-              item={item}
-              price={price}
               canBuy={canBuy}
               onBuy={() => void buy(1)}
               onBurst={() => void buy(BURST)}

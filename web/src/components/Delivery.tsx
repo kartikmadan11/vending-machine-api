@@ -1,6 +1,5 @@
 import type { Attempt } from '../attempts'
 import { coinSize } from '../money'
-import { PRODUCTS } from '../products'
 import { Coin } from './Coin'
 
 // What the latest purchase, or each sale of a burst, drops out of the machine. The receipt says
@@ -13,15 +12,10 @@ export function DeliveryBin({ attempts }: { attempts: Attempt[] }) {
     <div className="bin" aria-hidden>
       <div className="bin-opening">
         <div className="bin-items">
-          {sold.map((attempt) => {
-            const product = PRODUCTS.find((p) => p.slot === attempt.slot)
-            // Keyed by attempt so it drops in again for every sale.
-            return product ? (
-              <img key={attempt.id} className="bin-item" src={product.photo.src} alt="" />
-            ) : (
-              <span key={attempt.id} className="bin-item parcel" />
-            )
-          })}
+          {/* Keyed by attempt so it drops in again for every sale. */}
+          {sold.map((attempt) => (
+            <img key={attempt.id} className="bin-item" src={attempt.product.photo.src} alt="" />
+          ))}
         </div>
         <span className="bin-flap">Push</span>
       </div>

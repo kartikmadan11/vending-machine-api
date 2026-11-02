@@ -83,10 +83,6 @@
   --vend-buy-dark: #f5ae00;
   --vend-buy-edge: #a86f00;
   --vend-buy-ink: #2a1c00;
-  /* A custom price drops out as a plain box. */
-  --vend-parcel: #d2a466;
-  --vend-parcel-dark: #a5763a;
-  --vend-parcel-tape: #ecd7a8;
 
   /* Light and shadow, mixed into transparency. */
   --vend-light: #ffffff;
@@ -644,6 +640,8 @@ button:disabled {
   grid-area: controls;
   display: flex;
   flex-direction: column;
+  /* Any height the window gives the column is shared out between its parts. */
+  justify-content: space-between;
   gap: 12px;
   padding: 14px;
   border-radius: 18px;
@@ -749,12 +747,10 @@ button:disabled {
   gap: 10px;
 }
 
-.keypad-field {
+.keypad-code {
   display: flex;
-  align-items: center;
-  width: 132px;
-  height: 34px;
-  padding: 0 10px;
+  gap: 3px;
+  padding: 4px 6px;
   border-radius: 8px;
   background: var(--vend-lcd);
   box-shadow:
@@ -763,58 +759,36 @@ button:disabled {
   transition: box-shadow 0.15s;
 }
 
-.keypad[data-selected='true'] .keypad-field {
+.keypad[data-entered='true'] .keypad-code {
   box-shadow:
     inset 0 1px 5px var(--vend-shade-3),
     0 0 0 2px var(--vend-accent-fill),
     0 0 12px color-mix(in srgb, var(--vend-accent-fill) 60%, transparent);
 }
 
-.keypad-field:focus-within {
-  outline: 2px solid var(--vend-focus);
-  outline-offset: 2px;
-}
-
-.keypad-field input {
-  width: 100%;
-  min-width: 0;
-  padding: 0;
-  border: 0;
-  outline: none;
-  background: none;
+.keypad-char {
+  width: 20px;
   color: var(--vend-lcd-text);
-  font-size: 16px;
+  font-size: 20px;
   font-weight: 700;
-  font-variant-numeric: tabular-nums;
-  text-align: right;
+  line-height: 26px;
+  text-align: center;
   text-shadow: 0 0 10px color-mix(in srgb, var(--vend-lcd-text) 45%, transparent);
 }
 
-.keypad-field input::placeholder {
+.keypad-char[data-empty='true'] {
   color: var(--vend-lcd-dim);
-  font-size: 13px;
-  font-weight: 500;
   text-shadow: none;
-}
-
-.keypad-field input:placeholder-shown + .keypad-unit {
-  display: none;
-}
-
-.keypad-unit {
-  margin-left: 4px;
-  color: var(--vend-lcd-dim);
-  font-weight: 600;
 }
 
 .keys {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 6px;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px 6px;
 }
 
 .key {
-  height: 28px;
+  height: 40px;
   padding: 0;
   border: 0;
   border-radius: 8px;
@@ -829,15 +803,16 @@ button:disabled {
     0 3px 6px var(--vend-shade-2),
     inset 0 1px 0 var(--vend-light);
   color: var(--vend-chrome-ink);
-  font-size: 15px;
+  font-size: 17px;
   font-weight: 700;
   transition:
     transform 0.06s,
     box-shadow 0.06s;
 }
 
-.key-edit {
-  font-size: 13px;
+.key-clear {
+  grid-column: span 2;
+  font-size: 14px;
 }
 
 .key:active {
@@ -1006,7 +981,6 @@ button:disabled {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  margin-top: auto;
 }
 
 .vend-button {
@@ -1128,15 +1102,6 @@ button:disabled {
 .bin-item:nth-child(4) {
   --tilt: 12deg;
   animation-delay: 0.24s;
-}
-
-.parcel {
-  width: 64px;
-  height: 48px;
-  border-radius: 3px;
-  background:
-    linear-gradient(90deg, transparent 42%, var(--vend-parcel-tape) 42% 58%, transparent 58%),
-    linear-gradient(180deg, var(--vend-parcel), var(--vend-parcel-dark));
 }
 
 /* A smoked flap over the top of the opening. */

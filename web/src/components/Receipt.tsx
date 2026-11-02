@@ -33,7 +33,7 @@ function Single({ attempt }: { attempt: Attempt }) {
         <div className="callout-head">
           <span className={`badge tone-${tone}`}>{badge}</span>
           <strong>
-            {title}: {attempt.item}
+            {title}: {attempt.product.name}
           </strong>
         </div>
         <p className="callout-body">
@@ -73,11 +73,11 @@ function Explanation({ attempt }: { attempt: Attempt }) {
   if (outcome.kind === 'sold') return null
   switch (outcome.code) {
     case 'insufficient_payment':
-      return <>Nothing was taken. Insert {formatPence(attempt.price - attempt.paid)} more and try again.</>
+      return <>Nothing was taken. Insert {formatPence(attempt.product.price - attempt.paid)} more and try again.</>
     case 'cannot_make_change':
       return (
         <>
-          The coins left cannot make {formatPence(attempt.paid - attempt.price)} exactly, so the sale was
+          The coins left cannot make {formatPence(attempt.paid - attempt.product.price)} exactly, so the sale was
           refused and the machine is unchanged.
         </>
       )

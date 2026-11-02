@@ -26,8 +26,8 @@ export function ActivityLog({ attempts, onClear }: { attempts: Attempt[]; onClea
                 </time>
                 <span className="log-main">
                   <span className="log-title">
-                    <span className="log-customer">{attempt.customer}</span> {attempt.item},{' '}
-                    {formatPence(attempt.price)}, paid {formatPence(attempt.paid)}
+                    <span className="log-customer">{attempt.customer}</span> {attempt.product.name},{' '}
+                    {formatPence(attempt.product.price)}, paid {formatPence(attempt.paid)}
                   </span>
                   <span className="log-detail">
                     {title}

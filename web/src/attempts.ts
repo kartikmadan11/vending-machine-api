@@ -1,15 +1,13 @@
 import type { PurchaseOutcome, Sale } from './api'
 import { coinLabel } from './money'
+import type { Product } from './products'
 
 /** One purchase attempt and how the API answered it. */
 export interface Attempt {
   id: number
   at: number
   customer: string
-  /** The product's slot, or null for a custom price. */
-  slot: string | null
-  item: string
-  price: number
+  product: Product
   paid: number
   outcome: PurchaseOutcome
 }

@@ -98,3 +98,7 @@ export const PRODUCTS: Product[] = [
     photo: { src: mints, page: `${COMMONS}Cachou_lajaunie.png`, licence: 'CC BY-SA 3.0' },
   },
 ]
+
+/** The shelf letters, top to bottom, and the slot numbers along each shelf. */
+export const SHELVES = [...new Set(PRODUCTS.map((p) => p.slot[0]))]
+export const NUMBERS = [...new Set(PRODUCTS.map((p) => p.slot.slice(1)))]
