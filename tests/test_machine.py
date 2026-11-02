@@ -35,8 +35,8 @@ def test_change_comes_out_of_the_supply_and_payment_goes_to_the_cash_box():
 
 
 def test_payment_is_never_used_for_change():
-    # The machine has no 1p left. Paying 2p for a 1p item would let it hand back one of the
-    # customer's own coins, but those go straight into the sealed cash box.
+    # The machine has no 1p left. If the 2p was paid as two 1p coins, a machine that reused
+    # payments could hand one back, but payments go into the sealed cash box.
     machine = VendingMachine({1: 0, 2: 10})
     with pytest.raises(CannotMakeChange):
         machine.purchase(price=1, paid=2)
