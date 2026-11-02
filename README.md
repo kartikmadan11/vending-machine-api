@@ -15,6 +15,7 @@ uv sync
 uv run uvicorn vending.api:app
 ```
 
+`uv sync` installs the exact versions pinned in `uv.lock`.
 The API is then on http://127.0.0.1:8000, and the interactive docs are on http://127.0.0.1:8000/docs.
 
 To run the tests and the linter:
