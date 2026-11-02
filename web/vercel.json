@@ -1,0 +1,14 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "framework": "vite",
+  "installCommand": "npm ci",
+  "buildCommand": "node scripts/check-api-url.mjs && npm run build",
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "${VENDING_API_URL}/$1",
+      "env": ["VENDING_API_URL"],
+      "respectOriginCacheControl": false
+    }
+  ]
+}
