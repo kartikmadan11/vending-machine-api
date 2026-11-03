@@ -13,18 +13,20 @@ interface Props {
   /** The product the code names, once it is finished. */
   product: Product | null
   online: boolean | null
-  inserted: number[]
+  /** The money inserted and not yet spent or returned, in pence. */
+  inserted: number
   onInsert: (pence: number) => void
   onReturn: () => void
   canBuy: boolean
+  /** Whether what is inserted pays the price for every purchase of a burst. */
+  canBurst: boolean
   onBuy: () => void
   onBurst: () => void
 }
 
 /** The column beside the glass: display, keypad, coin slot, note reader and buttons. */
 export function PaymentPanel(props: Props) {
-  const { product, inserted, onInsert, onReturn, canBuy } = props
-  const paid = inserted.reduce((total, pence) => total + pence, 0)
+  const { product, inserted: paid, onInsert, onReturn, canBuy } = props
 
   return (
     <section className="controls" aria-labelledby="pay-heading">
@@ -77,6 +79,8 @@ export function PaymentPanel(props: Props) {
         <button type="button" className="vend-button" onClick={props.onBuy} disabled={!canBuy}>
           {product === null ? (
             'Choose an item'
+          ) : paid === 0 ? (
+            `Insert money to buy ${product.name}`
           ) : (
             <>
               Buy {product.name} for <span className="amount">{formatPence(product.price)}</span>
@@ -91,10 +95,10 @@ export function PaymentPanel(props: Props) {
             type="button"
             className="panel-button"
             onClick={props.onBurst}
-            disabled={!canBuy}
-            title={`Sends ${BURST} purchases at the same moment. Only ${LIMIT} get through in any 5 seconds.`}
+            disabled={!props.canBurst}
+            title={`Sends ${BURST} purchases at the same moment, each paying the price from the money inserted. Only ${LIMIT} get through in any 5 seconds.`}
           >
-            Send {BURST} at once
+            {product === null ? `Buy ${BURST} at once` : `Buy ${BURST} for ${formatPence(product.price * BURST)}`}
           </button>
         </div>
       </div>

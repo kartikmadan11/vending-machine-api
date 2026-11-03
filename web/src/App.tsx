@@ -8,6 +8,7 @@ import { MachinePanel, type Highlight } from './components/MachinePanel'
 import { BURST, PaymentPanel } from './components/PaymentPanel'
 import { ProductGrid } from './components/ProductGrid'
 import { Receipt } from './components/Receipt'
+import { leftAfter, payEach } from './credit'
 import { LICENCES, PRODUCTS } from './products'
 import { recordOutcome, type Limits } from './rateWindow'
 import { diffMachine } from './supply'
@@ -19,7 +20,8 @@ export function App() {
   // The code on the keypad is the choice, as on a real machine. Tapping a product types its code.
   const [code, setCode] = useState('')
   const [customer, setCustomer] = useState('alice')
-  const [inserted, setInserted] = useState<number[]>([])
+  // The money inserted and not yet spent or returned, in pence.
+  const [inserted, setInserted] = useState(0)
   const [limits, setLimits] = useState<Limits>({})
   const [latest, setLatest] = useState<Attempt[]>([])
   const [log, setLog] = useState<Attempt[]>([])
@@ -66,18 +68,19 @@ export function App() {
   }, [refresh])
 
   const product = PRODUCTS.find((p) => p.slot === code) ?? null
-  const paid = inserted.reduce((total, pence) => total + pence, 0)
   const customerId = customer.trim()
-  const canBuy = product !== null && customerId !== '' && !pending && online !== false
+  const ready = customerId !== '' && !pending && online !== false
+  const canBuy = ready && product !== null && payEach(inserted, product.price, 1) !== null
+  const canBurst = ready && product !== null && payEach(inserted, product.price, BURST) !== null
 
   async function buy(times: number) {
     if (product === null) return
     const { price } = product
-    // A burst with nothing inserted pays the exact price each time.
-    const amount = times > 1 && paid === 0 ? price : paid
+    const each = payEach(inserted, price, times)
+    if (each === null) return
     setPending(true)
     const outcomes = await Promise.all(
-      Array.from({ length: times }, () => purchase({ customer_id: customerId, price, paid: amount })),
+      Array.from({ length: times }, () => purchase({ customer_id: customerId, price, paid: each })),
     )
     const at = Date.now()
     const attempts = outcomes.map(
@@ -86,7 +89,7 @@ export function App() {
         at,
         customer: customerId,
         product,
-        paid: amount,
+        paid: each,
         outcome,
       }),
     )
@@ -105,7 +108,9 @@ export function App() {
     )
     setLatest(attempts)
     setLog((current) => [...attempts.toReversed(), ...current].slice(0, LOG_SIZE))
-    if (outcomes.some((o) => o.kind === 'sold')) setInserted([])
+    // Money inserted while the purchases were on their way is kept as well.
+    const sold = outcomes.filter((o) => o.kind === 'sold').length
+    setInserted((current) => leftAfter(current, each, sold))
     setPending(false)
     await refresh()
   }
@@ -142,9 +147,10 @@ export function App() {
               product={product}
               online={online}
               inserted={inserted}
-              onInsert={(pence) => setInserted((current) => [...current, pence])}
-              onReturn={() => setInserted([])}
+              onInsert={(pence) => setInserted((current) => current + pence)}
+              onReturn={() => setInserted(0)}
               canBuy={canBuy}
+              canBurst={canBurst}
               onBuy={() => void buy(1)}
               onBurst={() => void buy(BURST)}
             />

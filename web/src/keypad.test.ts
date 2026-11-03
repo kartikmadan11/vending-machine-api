@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { press } from './keypad'
+import { press, tap } from './keypad'
 import { NUMBERS, PRODUCTS, SHELVES } from './products'
 
 function type(...keys: string[]): string {
@@ -33,5 +33,17 @@ describe('press', () => {
     expect(SHELVES).toEqual(['A', 'B'])
     expect(NUMBERS).toEqual(['1', '2', '3', '4'])
     for (const { slot } of PRODUCTS) expect(type(slot[0], slot.slice(1))).toBe(slot)
+  })
+})
+
+describe('tap', () => {
+  it('chooses a product, and a second tap on it takes the choice back', () => {
+    expect(tap('', 'A2')).toBe('A2')
+    expect(tap('A2', 'A2')).toBe('')
+  })
+
+  it('swaps one product for another, or finishes a half-typed code with the one tapped', () => {
+    expect(tap('A2', 'B4')).toBe('B4')
+    expect(tap('A', 'A2')).toBe('A2')
   })
 })

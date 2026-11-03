@@ -33,14 +33,17 @@ The answer is 400, nothing is taken, and the £1 is still inserted.
 Press **Return money** to take it back.
 
 **No exact change.**
-Switch to bob, choose Mints (B4, 38p), insert the £20 note and press **Buy**, twice.
+Switch to bob, choose Mints (B4, 38p), insert the £20 note and press **Buy**, and then do the same again.
 The first pays out £19.62 in 13 coins, nine of them £2.
 Less than £19.62 is left in the tubes, so the second is refused with 409 and the machine is unchanged.
 Press **Return money** to take the note back.
 
 **The rate limit.**
-Switch to carol, choose Mints and press **Send 4 at once**.
-Three sell and the fourth is turned away with 429 before its price is looked at, and the meter counts down its `Retry-After`.
+Switch to carol, choose Mints, insert a £2 coin and press **Buy 4 for £1.52**.
+Three sell and one is turned away with 429 before its price is looked at, and the meter counts down its `Retry-After`.
+The one turned away is the last to reach the API, which over a real network is not always the last one sent.
+Each pays exactly 38p, so 86p is still inserted: the 48p over and the 38p of the one turned away.
+Press **Return money** to take it back.
 
 **From a terminal.**
 The page polls `GET /machine`, so a purchase made with curl shows up in it too.
@@ -75,8 +78,10 @@ The page in `web/` is there to drive it and to make each answer visible, not to 
 
 **It looks like a vending machine.**
 The products stand in wire spirals behind glass, each priced on the shelf rail under its slot code.
-You choose by tapping a product or by typing its code on the keypad, the shelf letter and then its number.
+You choose by tapping a product or by typing its code on the keypad, the shelf letter and then its number, and tapping the chosen product again puts it back.
 You pay through the coin slot and the note reader.
+**Buy** waits for money, but it still sends a purchase that pays too little, so the API's 400 can be seen.
+The burst button pays the exact price for each of four purchases out of what is inserted, so it waits until that covers all four.
 What you buy drops into the bin and the change lands in the cup, while the panels beside the machine say the same in words.
 The product photos come from Wikimedia Commons, and each one is credited and linked under the page.
 

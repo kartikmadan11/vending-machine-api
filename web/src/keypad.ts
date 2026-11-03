@@ -10,3 +10,8 @@ export function press(code: string, key: string): string {
   const next = code + key
   return code.length === 1 && PRODUCTS.some((p) => p.slot === next) ? next : code
 }
+
+/** The code on the keypad after a product is tapped: its slot, or nothing if it was already chosen. */
+export function tap(code: string, slot: string): string {
+  return code === slot ? '' : slot
+}

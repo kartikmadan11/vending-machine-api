@@ -1,8 +1,9 @@
+import { tap } from '../keypad'
 import { formatPence } from '../money'
 import { PRODUCTS, SHELVES } from '../products'
 
 interface Props {
-  /** The code on the keypad. Tapping a product types its code there. */
+  /** The code on the keypad. Tapping a product types its code there, and tapping it again clears it. */
   code: string
   onSelect: (code: string) => void
 }
@@ -24,7 +25,7 @@ export function ProductGrid({ code, onSelect }: Props) {
                 className="slot"
                 aria-pressed={product.slot === code}
                 aria-label={`${product.slot}, ${product.name}, ${product.detail}, ${formatPence(product.price)}`}
-                onClick={() => onSelect(product.slot)}
+                onClick={() => onSelect(tap(code, product.slot))}
               >
                 <span className="slot-stage" aria-hidden>
                   <Coil depth="back" />
