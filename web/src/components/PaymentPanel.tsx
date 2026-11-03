@@ -80,7 +80,8 @@ export function PaymentPanel(props: Props) {
           {product === null ? (
             'Choose an item'
           ) : paid === 0 ? (
-            `Insert money to buy ${product.name}`
+            // The display above names the product, and a longer label would wrap.
+            'Insert money'
           ) : (
             <>
               Buy {product.name} for <span className="amount">{formatPence(product.price)}</span>
