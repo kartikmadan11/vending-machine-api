@@ -1,23 +1,50 @@
+import { useState, type MouseEvent } from 'react'
 import type { Attempt } from '../attempts'
 import { coinSize } from '../money'
 import { Coin } from './Coin'
 
 // What the latest purchase, or each sale of a burst, drops out of the machine. The receipt says
-// the same in words, so both are hidden from assistive technology.
+// the same in words, so the cup is hidden from assistive technology. What is in the bin can be
+// taken out, so each product there is a button.
 
 /** The flap at the bottom, where what was bought falls. */
 export function DeliveryBin({ attempts }: { attempts: Attempt[] }) {
+  // The attempts whose product has been taken out. Every attempt has a new id, so a later sale
+  // is never hidden by an earlier one.
+  const [taken, setTaken] = useState<ReadonlySet<number>>(new Set())
   const sold = attempts.filter((a) => a.outcome.kind === 'sold')
+
+  function take(event: MouseEvent<HTMLButtonElement>, id: number) {
+    // The button is about to disappear, so keep focus in the bin if anything is left there.
+    const button = event.currentTarget
+    const rest = button.parentElement?.querySelectorAll<HTMLButtonElement>('.bin-item:not([data-taken="true"])')
+    const next = [...(rest ?? [])].find((other) => other !== button)
+    next?.focus()
+    setTaken((current) => new Set(current).add(id))
+  }
+
   return (
-    <div className="bin" aria-hidden>
+    <div className="bin">
       <div className="bin-opening">
         <div className="bin-items">
-          {/* Keyed by attempt so it drops in again for every sale. */}
+          {/* Keyed by attempt so it drops in again for every sale. One taken out keeps its
+              place, so the rest stay where they fell. */}
           {sold.map((attempt) => (
-            <img key={attempt.id} className="bin-item" src={attempt.product.photo.src} alt="" />
+            <button
+              key={attempt.id}
+              type="button"
+              className="bin-item"
+              data-taken={taken.has(attempt.id)}
+              aria-label={`Take the ${attempt.product.name.toLowerCase()} from the bin`}
+              onClick={(event) => take(event, attempt.id)}
+            >
+              <img src={attempt.product.photo.src} alt="" />
+            </button>
           ))}
         </div>
-        <span className="bin-flap">Push</span>
+        <span className="bin-flap" aria-hidden>
+          Push
+        </span>
       </div>
     </div>
   )

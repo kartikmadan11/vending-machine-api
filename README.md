@@ -86,6 +86,7 @@ You pay through the coin slot and the note reader.
 **Buy** waits for money, but it still sends a purchase that pays too little, so the API's 400 can be seen.
 The burst button pays the exact price for each of four purchases out of what is inserted, so it waits until that covers all four.
 What you buy drops into the bin and the change lands in the cup, while the panels beside the machine say the same in words.
+Tapping a product in the bin takes it out.
 The product photos come from Wikimedia Commons, and each one is credited and linked under the page.
 
 **Off the machine, colour is kept for meaning.**
