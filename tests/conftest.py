@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 
@@ -12,3 +14,12 @@ class FakeClock:
 @pytest.fixture
 def clock():
     return FakeClock()
+
+
+@pytest.fixture
+def frequent_thread_switches():
+    # Switch threads far more often than the default 5ms, so a race is hit every run.
+    default = sys.getswitchinterval()
+    sys.setswitchinterval(1e-6)
+    yield
+    sys.setswitchinterval(default)

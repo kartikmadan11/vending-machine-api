@@ -59,7 +59,7 @@ The API tests are organised around the hard problems, not around files:
 
 - `test_change.py` compares the change-maker with a brute-force search over random small supplies.
 - `test_machine.py` races threads at one machine and checks no coin is paid out twice.
-- `test_rate_limit.py` drives the window with a fake clock.
+- `test_rate_limit.py` drives the window with a fake clock, and races threads through the sweep of idle customers.
 - `test_api.py` checks that the limiter turns a customer away before a bad price is even read.
 - `test_server.py` starts a real uvicorn and sends 40 customers at it at once.
 

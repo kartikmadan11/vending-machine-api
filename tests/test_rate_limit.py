@@ -1,3 +1,5 @@
+import threading
+
 import pytest
 
 from vending.rate_limit import RateLimited, RateLimiter
@@ -82,6 +84,35 @@ def test_forgets_customers_who_have_gone_quiet(limiter, clock):
     clock.now += 6
     limiter.check("dave")
     assert set(limiter._attempts) == {"dave"}
+
+
+@pytest.mark.usefixtures("frequent_thread_switches")
+def test_concurrent_attempts_during_a_sweep_let_only_three_through(limiter, clock):
+    # Many customers who have gone quiet make the next sweep long. Without the lock,
+    # threads sweep at the same time and each swaps in its own dict, losing the
+    # attempts the others have just recorded.
+    for i in range(20_000):
+        limiter.check(f"quiet-{i}")
+    clock.now += 6
+    let_through = []
+    start = threading.Barrier(16)
+
+    def attempt():
+        start.wait()
+        for _ in range(4):
+            try:
+                limiter.check("alice")
+            except RateLimited:
+                continue
+            let_through.append(1)
+
+    threads = [threading.Thread(target=attempt) for _ in range(16)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert len(let_through) == 3
 
 
 def test_rejects_a_bad_configuration(clock):

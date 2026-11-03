@@ -1,5 +1,4 @@
 import random
-import sys
 import threading
 
 import pytest
@@ -113,15 +112,6 @@ def test_supply_only_goes_down_over_many_purchases():
     state = machine.state()
     assert {d: state.coins[d] + dispensed[d] for d in UK_COINS} == initial
     assert state.cash_box == takings
-
-
-@pytest.fixture
-def frequent_thread_switches():
-    # Switch threads far more often than the default 5ms, so a race is hit every run.
-    default = sys.getswitchinterval()
-    sys.setswitchinterval(1e-6)
-    yield
-    sys.setswitchinterval(default)
 
 
 @pytest.mark.usefixtures("frequent_thread_switches")
