@@ -123,7 +123,7 @@ Everything it shows is the API's own answer, badged with its HTTP status, and it
 On a full machine:
 
 - **200.** Cola (A2, £1.20) with a £2 coin pays out 80p as 50p, 20p and 10p.
-- **400.** Flat white (A4, £2.15) with £1 is refused, and the £1 is still inserted.
+- **400.** Flat white (A4, £2.15) with £1 is refused, and **Return money** gives the £1 back.
 - **409.** As bob, Mints (B4, 38p) with the £20 note pays out £19.62 in 13 coins, and the same purchase again is refused because the tubes no longer hold that much.
 - **429.** As carol, Mints with a £2 coin and **Buy 4 for £1.52** sells three and turns one away, and the meter counts down its `Retry-After`.
 
