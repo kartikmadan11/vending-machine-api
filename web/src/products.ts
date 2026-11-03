@@ -10,7 +10,6 @@ import water from './assets/products/water.png'
 /** Where each licence's terms live, for the credits. Public domain has none. */
 export const LICENCES = {
   'Public domain': null,
-  CC0: 'https://creativecommons.org/publicdomain/zero/1.0/',
   'CC BY-SA 3.0': 'https://creativecommons.org/licenses/by-sa/3.0/',
   'CC BY-SA 4.0': 'https://creativecommons.org/licenses/by-sa/4.0/',
 } as const
@@ -63,7 +62,7 @@ export const PRODUCTS: Product[] = [
     name: 'Flat white',
     detail: 'Hot, 8 oz',
     price: 215,
-    photo: { src: flatWhite, page: `${COMMONS}Paper_Cups_-_isolated.png`, licence: 'CC0' },
+    photo: { src: flatWhite, page: `${COMMONS}Paper_cup_DS.jpg`, licence: 'CC BY-SA 3.0' },
   },
   {
     slot: 'B1',
