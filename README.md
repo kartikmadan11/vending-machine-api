@@ -3,6 +3,9 @@
 A vending machine API that pays out the fewest coins it can, using only the coins it still holds.
 It starts with ten of each UK coin and is never refilled, payments go into a sealed cash box, and each customer gets at most three purchase attempts in any five seconds.
 
+It runs live at <https://vending-machine-lime.vercel.app>.
+The API there sleeps when nobody has used it for 15 minutes, so the first visit after that can wait a minute for it to wake.
+
 ```sh
 uv sync
 uv run uvicorn vending.api:app
@@ -206,7 +209,9 @@ The client's tests cover the pieces that hold logic: reading each API answer, th
 
 The web client deploys to Vercel as a static site, and Vercel forwards `/api/*` to the API running as one long-lived process on another host.
 The API is not a Vercel Function, because Vercel adds instances as traffic needs them, and each would be a separate machine with its own coins, cash box and limiter.
-[docs/deploy.md](docs/deploy.md) has the reasoning, the Vercel setup and the settings the API host needs.
+The live site is on Vercel and its API is a free Render web service.
+Every visitor shares that one machine, and it refills when the API wakes from sleep or is redeployed.
+[docs/deploy.md](docs/deploy.md) has the reasoning, the Vercel setup, the settings the API host needs and the details of the live deployment.
 
 ## Assumptions made
 

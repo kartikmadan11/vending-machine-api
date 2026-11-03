@@ -116,6 +116,17 @@ npx vercel@latest deploy --prod
 
 If `link` does not ask for the code directory, set **Root Directory** to `web` in the project settings before deploying.
 
+## The live deployment
+
+- **The site** is <https://vending-machine-lime.vercel.app>, a Vercel project named `vending-machine` with `VENDING_API_URL` set for Production and Preview.
+- **The API** is <https://vending-machine-api-licw.onrender.com>, a free Render web service with one instance and the build and start commands above.
+  Render deploys every push to its branch, which restarts the API and refills the machine.
+- **The site was deployed through Vercel's REST API** by uploading the files in `web/`, so the project is not linked to the repository and a push does not redeploy it.
+  To deploy changes on push, connect the repository in the project's settings and set **Root Directory** to `web`, or deploy by hand with the CLI steps above.
+- **The API sleeps** after 15 minutes without a request, and Render says starting it again takes up to a minute.
+  The first visit after that says **Connecting** until the API answers, or **API offline** with a note that it may be waking up if the proxy gives up first, and the machine it finds is refilled.
+  An open page polls every two seconds, so the API stays awake for as long as anyone has the page open.
+
 ## Things to know
 
 - **Every visitor shares one machine.**
