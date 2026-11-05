@@ -3,7 +3,7 @@ from fastapi.testclient import TestClient
 
 from vending.api import create_app
 from vending.machine import UK_COINS, VendingMachine
-from vending.rate_limit import RateLimiter
+from vending.rate_limit import ROLLING_MINUTE_POLICY, RateLimiter
 
 
 @pytest.fixture
@@ -101,10 +101,27 @@ def test_fourth_purchase_in_five_seconds_is_turned_away(client, clock):
     clock.now += 2.5
     response = buy(client)
     assert response.status_code == 429
-    assert response.json()["detail"]["code"] == "rate_limited"
+    assert response.json() == {
+        "result": "rate_limited",
+        "retry_after_seconds": 3,
+        "rate_limit": {"policy": "default", "limit": 3, "window_seconds": 5.0},
+        "detail": {
+            "code": "rate_limited",
+            "message": "too many purchases; at most 3 purchase attempts in any 5 seconds",
+        },
+    }
     assert response.headers["Retry-After"] == "3"
     clock.now += 2.5
     assert buy(client).status_code == 200
+
+
+def test_retry_after_is_at_least_one_second(client, clock):
+    for _ in range(3):
+        assert buy(client).status_code == 200
+    clock.now += 4.9
+    response = buy(client)
+    assert response.json()["retry_after_seconds"] == 1
+    assert response.headers["Retry-After"] == "1"
 
 
 def test_rate_limit_is_checked_before_the_price_and_change(client):
@@ -153,3 +170,97 @@ def test_huge_amounts_are_turned_down_cleanly(client, digits, status):
     )
     assert response.status_code == status
     assert client.get("/machine").json() == before
+
+
+@pytest.fixture
+def rolling_minute_client(clock):
+    limiter = RateLimiter(ROLLING_MINUTE_POLICY, clock=clock)
+    return TestClient(create_app(machine=VendingMachine(), limiter=limiter))
+
+
+def test_rolling_minute_counts_every_admitted_attempt_whatever_its_outcome(
+    rolling_minute_client, clock
+):
+    client = rolling_minute_client
+    start = clock.now
+    assert buy(client, price=120, paid=500).status_code == 200
+    assert buy(client, price=150, paid=100).status_code == 400
+    assert buy(client, price=1, paid=5000).status_code == 409
+
+    # five seconds on, the default policy would have let this through
+    clock.now = start + 5
+    response = buy(client)
+    assert response.status_code == 429
+    assert response.json() == {
+        "result": "rate_limited",
+        "retry_after_seconds": 55,
+        "rate_limit": {"policy": "rolling-minute", "limit": 3, "window_seconds": 60.0},
+        "detail": {
+            "code": "rate_limited",
+            "message": "too many purchases; at most 3 purchase attempts in any 60 seconds",
+        },
+    }
+    assert response.headers["Retry-After"] == "55"
+
+
+def test_rolling_minute_does_not_count_attempts_it_turns_away(rolling_minute_client, clock):
+    client = rolling_minute_client
+    start = clock.now
+    for _ in range(3):
+        assert buy(client).status_code == 200
+    for offset in (10, 30, 50, 59):
+        clock.now = start + offset
+        response = buy(client)
+        assert response.status_code == 429
+        assert response.json()["retry_after_seconds"] == 60 - offset
+    clock.now = start + 60
+    for _ in range(3):
+        assert buy(client).status_code == 200
+    assert buy(client).status_code == 429
+
+
+def test_rolling_minute_keeps_the_successful_response_the_same(rolling_minute_client, clock):
+    response = buy(rolling_minute_client, price=120, paid=500)
+    assert response.status_code == 200
+    assert response.json() == {
+        "change": [
+            {"denomination": 200, "count": 1},
+            {"denomination": 100, "count": 1},
+            {"denomination": 50, "count": 1},
+            {"denomination": 20, "count": 1},
+            {"denomination": 10, "count": 1},
+        ],
+        "change_total": 380,
+    }
+
+
+def test_rolling_minute_limits_each_customer_separately(rolling_minute_client):
+    for _ in range(3):
+        assert buy(rolling_minute_client, customer="alice").status_code == 200
+    assert buy(rolling_minute_client, customer="alice").status_code == 429
+    assert buy(rolling_minute_client, customer="bob").status_code == 200
+
+
+def purchase_docs(app):
+    return app.openapi()["paths"]["/purchases"]["post"]["description"]
+
+
+def test_machine_runs_the_default_policy_unless_set_up_with_another(monkeypatch):
+    monkeypatch.delenv("VENDING_RATE_LIMIT_POLICY", raising=False)
+    assert "at most 3 purchase attempts in any 5 seconds" in purchase_docs(create_app())
+    monkeypatch.setenv("VENDING_RATE_LIMIT_POLICY", "rolling-minute")
+    assert "at most 3 purchase attempts in any 60 seconds" in purchase_docs(create_app())
+
+
+def test_machine_set_up_with_an_unknown_policy_does_not_start(monkeypatch):
+    monkeypatch.setenv("VENDING_RATE_LIMIT_POLICY", "hourly")
+    with pytest.raises(ValueError, match="unknown rate limit policy"):
+        create_app()
+
+
+def test_429_is_documented_with_the_retry_fields():
+    schema = create_app().openapi()
+    response = schema["paths"]["/purchases"]["post"]["responses"]["429"]
+    ref = response["content"]["application/json"]["schema"]["$ref"].rsplit("/", 1)[-1]
+    fields = schema["components"]["schemas"][ref]["properties"]
+    assert set(fields) == {"result", "retry_after_seconds", "rate_limit", "detail"}

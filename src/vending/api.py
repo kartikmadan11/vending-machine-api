@@ -1,9 +1,10 @@
 """HTTP API for the vending machine."""
 
 import math
-from typing import Annotated
+from typing import Annotated, Literal, Self
 
-from fastapi import FastAPI, HTTPException, status
+from fastapi import FastAPI, HTTPException, Request, status
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
 from vending.machine import (
@@ -14,7 +15,7 @@ from vending.machine import (
     PurchaseError,
     VendingMachine,
 )
-from vending.rate_limit import RateLimited, RateLimiter
+from vending.rate_limit import RateLimited, RateLimiter, RateLimitPolicy, policy_from_env
 
 STATUS_FOR = {
     InvalidAmount: status.HTTP_400_BAD_REQUEST,
@@ -92,6 +93,60 @@ class ErrorResponse(BaseModel):
     detail: Error
 
 
+def describe(policy: RateLimitPolicy) -> str:
+    """The policy in words, such as "3 purchase attempts in any 5 seconds"."""
+    return f"{policy.limit} purchase attempts in any {policy.window:g} seconds"
+
+
+class RateLimit(BaseModel):
+    """The policy an attempt was turned away under."""
+
+    policy: str = Field(description="Name of the machine's rate limit policy.")
+    limit: int = Field(description="Purchase attempts each customer may make in any window.")
+    window_seconds: float = Field(description="Length of the sliding window in seconds.")
+
+
+class RateLimitedResponse(BaseModel):
+    model_config = ConfigDict(
+        json_schema_extra={
+            "examples": [
+                {
+                    "result": "rate_limited",
+                    "retry_after_seconds": 3,
+                    "rate_limit": {"policy": "default", "limit": 3, "window_seconds": 5.0},
+                    "detail": {
+                        "code": "rate_limited",
+                        "message": "too many purchases; at most 3 purchase attempts in any 5 "
+                        "seconds",
+                    },
+                }
+            ]
+        }
+    )
+
+    result: Literal["rate_limited"] = "rate_limited"
+    retry_after_seconds: int = Field(
+        description="Whole seconds to wait before the next attempt is let through; also sent "
+        "as the Retry-After header."
+    )
+    rate_limit: RateLimit
+    detail: Error
+
+    @classmethod
+    def for_error(cls, error: RateLimited) -> Self:
+        policy = error.policy
+        return cls(
+            # Rounded up, and at least 1, so a client that waits this long is let through.
+            retry_after_seconds=max(1, math.ceil(error.retry_after)),
+            rate_limit=RateLimit(
+                policy=policy.name, limit=policy.limit, window_seconds=policy.window
+            ),
+            detail=Error(
+                code="rate_limited", message=f"too many purchases; at most {describe(policy)}"
+            ),
+        )
+
+
 def error_doc(description: str, **examples: str) -> dict:
     """OpenAPI docs for an error status, with an example body for each error code."""
     return {
@@ -111,13 +166,27 @@ def error_doc(description: str, **examples: str) -> dict:
 def create_app(
     machine: VendingMachine | None = None, limiter: RateLimiter | None = None
 ) -> FastAPI:
+    """The API for one machine.
+
+    Without a ``limiter``, it limits customers under the policy named by
+    ``VENDING_RATE_LIMIT_POLICY``, or the default policy when that is unset.
+    """
     machine = VendingMachine() if machine is None else machine
-    limiter = RateLimiter() if limiter is None else limiter
+    limiter = RateLimiter(policy_from_env()) if limiter is None else limiter
     app = FastAPI(
         title="vending-machine-api",
         summary="Pays out the fewest coins from a supply that is never refilled.",
         version="0.1.0",
     )
+
+    @app.exception_handler(RateLimited)
+    def rate_limited(request: Request, e: RateLimited) -> JSONResponse:
+        body = RateLimitedResponse.for_error(e)
+        return JSONResponse(
+            body.model_dump(),
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            headers={"Retry-After": str(body.retry_after_seconds)},
+        )
 
     # Plain `def` endpoints run on FastAPI's thread pool, so purchases really do run at
     # the same time; the machine and the limiter each hold a lock for that.
@@ -135,28 +204,22 @@ def create_app(
                 "The coins left cannot make the change.",
                 cannot_make_change="cannot make 3p of change from the coins left",
             ),
-            429: error_doc(
-                "Too many purchases by this customer. Retry-After gives the seconds to wait.",
-                rate_limited="too many purchases; try again in 2.50s",
-            ),
+            429: {
+                "model": RateLimitedResponse,
+                "description": "Too many purchases by this customer. `retry_after_seconds`, "
+                "and the Retry-After header, give the whole seconds to wait.",
+            },
         },
+        description=(
+            "All amounts are whole pence. "
+            f"Each customer may make at most {describe(limiter.policy)}, whether they succeed "
+            "or fail; beyond that they are turned away with 429 before the price is looked at, "
+            "and that attempt does not count. A rejected purchase leaves the machine unchanged."
+        ),
     )
     def purchase(request: PurchaseRequest) -> PurchaseResponse:
-        """Pay for an item and get back the fewest coins of change the machine can make.
-
-        All amounts are whole pence. Each customer may make at most three purchase attempts
-        in any five seconds; beyond that they are turned away with 429 before the price is
-        looked at. A rejected purchase leaves the machine unchanged.
-        """
-        try:
-            limiter.check(request.customer_id)
-        except RateLimited as e:
-            seconds = max(1, math.ceil(e.retry_after))
-            raise HTTPException(
-                status.HTTP_429_TOO_MANY_REQUESTS,
-                detail={"code": "rate_limited", "message": f"too many purchases; {e}"},
-                headers={"Retry-After": str(seconds)},
-            ) from None
+        """Pay for an item and get back the fewest coins of change the machine can make."""
+        limiter.check(request.customer_id)
         try:
             change = machine.purchase(price=request.price, paid=request.paid)
         except PurchaseError as e:

@@ -2,6 +2,7 @@
 
 A vending machine API that pays out the fewest coins it can, using only the coins it still holds.
 It starts with ten of each UK coin and is never refilled, payments go into a sealed cash box, and each customer gets at most three purchase attempts in any five seconds.
+Selected machines can run a stricter policy instead, of three attempts in any 60 seconds.
 
 A web client in `web/` drives it, and both run live at <https://vending-machine-lime.vercel.app>.
 The API there sleeps after 15 minutes without a request, so the first visit after that can wait a minute for it to wake.
@@ -23,6 +24,15 @@ cd web
 npm ci
 npm run dev                        # http://localhost:5173, proxying /api to the API
 ```
+
+To run a machine under another rate limit policy, name it when starting the API:
+
+```sh
+VENDING_RATE_LIMIT_POLICY=rolling-minute uv run uvicorn vending.api:app
+```
+
+The policies are defined in `rate_limit.py`: `default` allows three attempts in any five seconds, and `rolling-minute` three in any 60 seconds.
+Without the variable a machine runs `default`, and an unknown name stops the API from starting.
 
 The machine and the limiter live in memory, so run a single worker, which is the default, and expect a restart to refill the machine.
 Without uv, create a virtual environment and run `pip install -e . httpx2 pytest`.
@@ -78,9 +88,19 @@ The API tests are organised around the hard problems, not around files:
 | 400 | `invalid_amount` | `price` or `paid` is negative |
 | 409 | `cannot_make_change` | the coins left cannot make the exact change |
 | 422 | | the body is malformed: a missing field, a wrong type such as `1.5` or `"150"`, or an unknown field |
-| 429 | `rate_limited` | three attempts in the last five seconds; `Retry-After` gives the whole seconds to wait |
+| 429 | `rate_limited` | the customer has used up the machine's policy, such as three attempts in the last five seconds |
 
 Errors other than 422 have the body `{"detail": {"code": "...", "message": "..."}}`, so a client branches on `code` and shows `message`.
+A 429 also carries `"result": "rate_limited"`, `"retry_after_seconds"`, the whole seconds to wait, which the `Retry-After` header repeats, and `"rate_limit"`, the policy that turned the attempt away:
+
+```json
+{
+  "result": "rate_limited",
+  "retry_after_seconds": 3,
+  "rate_limit": {"policy": "default", "limit": 3, "window_seconds": 5.0},
+  "detail": {"code": "rate_limited", "message": "too many purchases; at most 3 purchase attempts in any 5 seconds"}
+}
+```
 
 ## Design decisions
 
@@ -100,6 +120,9 @@ None of them imports FastAPI, so each is tested without HTTP.
   A new attempt is allowed only if fewer than three fall in the last five seconds, which is "at most three in any five seconds" exactly, where a fixed window would allow six across a boundary.
   A customer over the limit is turned away before the price is checked, so the schema checks only types and the checks on the amounts live in the machine.
   Every attempt let through counts, sold or not, so failing requests cannot be sent without limit, and attempts turned away do not, so retrying early does not extend a lockout.
+- **Rate limit policies are code.**
+  Each is a named, frozen `RateLimitPolicy` in `rate_limit.py`, and a machine picks one by name, so what a policy allows changes only through a reviewed change and every machine on one name behaves the same.
+  Both policies run the same sliding-window log, so the tests of the window run under each.
 - **The clock is injectable**, so the tests control time exactly rather than sleeping.
 
 ## Assumptions and trade-offs
