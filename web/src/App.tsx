@@ -80,7 +80,9 @@ export function App() {
     if (each === null) return
     setPending(true)
     const outcomes = await Promise.all(
-      Array.from({ length: times }, () => purchase({ customer_id: customerId, price, paid: each })),
+      Array.from({ length: times }, () =>
+        purchase({ request_id: crypto.randomUUID(), customer_id: customerId, price, paid: each }),
+      ),
     )
     const at = Date.now()
     const attempts = outcomes.map(

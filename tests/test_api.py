@@ -1,3 +1,5 @@
+import uuid
+
 import pytest
 from fastapi.testclient import TestClient
 
@@ -11,8 +13,13 @@ def client(clock):
     return TestClient(create_app(machine=VendingMachine(), limiter=RateLimiter(clock=clock)))
 
 
-def buy(client, customer="alice", price=120, paid=500):
-    return client.post("/purchases", json={"customer_id": customer, "price": price, "paid": paid})
+def buy(client, customer="alice", price=120, paid=500, request_id=None):
+    # Callers make up a new request id for each purchase, and reuse it only to retry one.
+    request_id = str(uuid.uuid4()) if request_id is None else request_id
+    return client.post(
+        "/purchases",
+        json={"request_id": request_id, "customer_id": customer, "price": price, "paid": paid},
+    )
 
 
 def test_purchase_reports_the_coins_dispensed(client):
@@ -87,10 +94,23 @@ def test_cannot_make_change_once_coins_run_out(clock):
         {"customer_id": "   ", "price": 150, "paid": 200},
         {"customer_id": "x" * 65, "price": 150, "paid": 200},
         {"price": 150, "paid": 200},
+        {"request_id": "not-a-uuid", "customer_id": "alice", "price": 150, "paid": 200},
+        {"request_id": 12345, "customer_id": "alice", "price": 150, "paid": 200},
+        {"request_id": None, "customer_id": "alice", "price": 150, "paid": 200},
     ],
 )
 def test_malformed_requests_are_rejected(client, body):
+    # Every body has a good request id unless the case is about the request id, so each
+    # is rejected for the fault it shows.
+    body = {"request_id": str(uuid.uuid4()), **body}
     before = client.get("/machine").json()
+    assert client.post("/purchases", json=body).status_code == 422
+    assert client.get("/machine").json() == before
+
+
+def test_a_purchase_without_a_request_id_is_rejected(client):
+    before = client.get("/machine").json()
+    body = {"customer_id": "alice", "price": 150, "paid": 200}
     assert client.post("/purchases", json=body).status_code == 422
     assert client.get("/machine").json() == before
 
@@ -148,8 +168,91 @@ def test_huge_amounts_are_turned_down_cleanly(client, digits, status):
     before = client.get("/machine").json()
     response = client.post(
         "/purchases",
-        content='{"customer_id": "alice", "price": 1, "paid": 1' + "0" * digits + "}",
+        content=f'{{"request_id": "{uuid.uuid4()}", "customer_id": "alice", "price": 1, '
+        '"paid": 1' + "0" * digits + "}",
         headers={"Content-Type": "application/json"},
     )
     assert response.status_code == status
     assert client.get("/machine").json() == before
+
+
+def test_retrying_a_purchase_returns_the_original_result_without_dispensing_again(client):
+    request_id = str(uuid.uuid4())
+    first = buy(client, price=120, paid=500, request_id=request_id)
+    assert first.status_code == 200
+    after_first = client.get("/machine").json()
+
+    # the response was lost, so the caller sends the same purchase again
+    retry = buy(client, price=120, paid=500, request_id=request_id)
+    assert retry.status_code == 200
+    assert retry.json() == first.json()
+    assert client.get("/machine").json() == after_first
+
+
+@pytest.mark.parametrize(
+    "changed",
+    [{"price": 150}, {"paid": 1000}, {"customer": "bob"}],
+    ids=["price", "paid", "customer"],
+)
+def test_reusing_a_request_id_for_a_different_purchase_is_a_conflict(client, changed):
+    request_id = str(uuid.uuid4())
+    original = buy(client, price=120, paid=500, request_id=request_id)
+    after_original = client.get("/machine").json()
+
+    response = buy(client, **{"price": 120, "paid": 500, **changed}, request_id=request_id)
+    assert response.status_code == 409
+    assert response.json() == {
+        "detail": {
+            "code": "idempotency_conflict",
+            "message": f"cannot record this purchase: request_id {request_id} was already used "
+            "for a different purchase",
+        }
+    }
+    assert client.get("/machine").json() == after_original
+
+    # the original purchase is still the one recorded under that id
+    assert buy(client, price=120, paid=500, request_id=request_id).json() == original.json()
+
+
+def test_retrying_a_refused_purchase_returns_the_same_refusal(client):
+    request_id = str(uuid.uuid4())
+    first = buy(client, price=150, paid=100, request_id=request_id)
+    assert first.status_code == 400
+    retry = buy(client, price=150, paid=100, request_id=request_id)
+    assert retry.status_code == 400
+    assert retry.json() == first.json()
+
+
+def test_retries_and_conflicts_do_not_use_up_attempts(client):
+    request_id = str(uuid.uuid4())
+    assert buy(client, request_id=request_id).status_code == 200
+    for _ in range(5):
+        assert buy(client, request_id=request_id).status_code == 200
+        assert buy(client, price=150, request_id=request_id).status_code == 409
+    # only the first purchase counted, so two new ones are let through before the limit
+    assert buy(client).status_code == 200
+    assert buy(client).status_code == 200
+    assert buy(client).status_code == 429
+
+
+def test_a_purchase_turned_away_by_the_limit_can_be_retried_later(client, clock):
+    for _ in range(3):
+        assert buy(client).status_code == 200
+    request_id = str(uuid.uuid4())
+    assert buy(client, request_id=request_id).status_code == 429
+    before = client.get("/machine").json()
+
+    clock.now += 5
+    retry = buy(client, request_id=request_id)
+    assert retry.status_code == 200
+    assert retry.json()["change_total"] == 380
+    assert client.get("/machine").json()["cash_box"] == before["cash_box"] + 500
+
+
+def test_request_ids_match_however_the_uuid_is_written(client):
+    request_id = uuid.uuid4()
+    first = buy(client, request_id=str(request_id))
+    after_first = client.get("/machine").json()
+    retry = buy(client, request_id=str(request_id).upper())
+    assert retry.json() == first.json()
+    assert client.get("/machine").json() == after_first

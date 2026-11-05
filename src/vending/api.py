@@ -2,10 +2,12 @@
 
 import math
 from typing import Annotated
+from uuid import UUID
 
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field, StrictInt, StringConstraints
 
+from vending.idempotency import IdempotencyConflict, RequestLog
 from vending.machine import (
     UK_COINS,
     CannotMakeChange,
@@ -20,13 +22,28 @@ STATUS_FOR = {
     InvalidAmount: status.HTTP_400_BAD_REQUEST,
     InsufficientPayment: status.HTTP_400_BAD_REQUEST,
     CannotMakeChange: status.HTTP_409_CONFLICT,
+    IdempotencyConflict: status.HTTP_409_CONFLICT,
 }
 
 
 class PurchaseRequest(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
-        json_schema_extra={"examples": [{"customer_id": "alice", "price": 120, "paid": 500}]},
+        json_schema_extra={
+            "examples": [
+                {
+                    "request_id": "6f1c2e0a-4b7d-4c1e-9a3f-2d8b5e7c9a10",
+                    "customer_id": "alice",
+                    "price": 120,
+                    "paid": 500,
+                }
+            ]
+        },
+    )
+
+    request_id: UUID = Field(
+        description="A new UUID for each purchase, made up by the caller. Send it again only to "
+        "retry the same purchase, and get back the original result."
     )
 
     customer_id: Annotated[
@@ -113,6 +130,7 @@ def create_app(
 ) -> FastAPI:
     machine = VendingMachine() if machine is None else machine
     limiter = RateLimiter() if limiter is None else limiter
+    log: RequestLog[dict[int, int]] = RequestLog()
     app = FastAPI(
         title="vending-machine-api",
         summary="Pays out the fewest coins from a supply that is never refilled.",
@@ -132,8 +150,11 @@ def create_app(
                 invalid_amount="price and paid must be zero or more pence",
             ),
             409: error_doc(
-                "The coins left cannot make the change.",
+                "The coins left cannot make the change, or the request_id was already used for "
+                "a different purchase.",
                 cannot_make_change="cannot make 3p of change from the coins left",
+                idempotency_conflict="cannot record this purchase: request_id "
+                "6f1c2e0a-4b7d-4c1e-9a3f-2d8b5e7c9a10 was already used for a different purchase",
             ),
             429: error_doc(
                 "Too many purchases by this customer. Retry-After gives the seconds to wait.",
@@ -147,9 +168,20 @@ def create_app(
         All amounts are whole pence. Each customer may make at most three purchase attempts
         in any five seconds; beyond that they are turned away with 429 before the price is
         looked at. A rejected purchase leaves the machine unchanged.
+
+        Sending the same `request_id` again with the same purchase returns the original
+        result without paying out again or using up an attempt; with a different purchase it
+        is refused with `idempotency_conflict`.
         """
-        try:
+
+        def buy() -> dict[int, int]:
             limiter.check(request.customer_id)
+            return machine.purchase(price=request.price, paid=request.paid)
+
+        try:
+            change = log.run(
+                request.request_id, (request.customer_id, request.price, request.paid), buy
+            )
         except RateLimited as e:
             seconds = max(1, math.ceil(e.retry_after))
             raise HTTPException(
@@ -157,8 +189,6 @@ def create_app(
                 detail={"code": "rate_limited", "message": f"too many purchases; {e}"},
                 headers={"Retry-After": str(seconds)},
             ) from None
-        try:
-            change = machine.purchase(price=request.price, paid=request.paid)
         except PurchaseError as e:
             raise HTTPException(
                 STATUS_FOR[type(e)], detail={"code": e.code, "message": str(e)}

@@ -16,6 +16,8 @@ export interface Sale {
 }
 
 export interface PurchaseRequest {
+  /** A new UUID for each purchase. Sending it again retries that purchase without paying out twice. */
+  request_id: string
   customer_id: string
   price: number
   paid: number

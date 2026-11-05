@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { getMachine, purchase } from './api'
 
-const request = { customer_id: 'alice', price: 120, paid: 200 }
+const request = { request_id: '6f1c2e0a-4b7d-4c1e-9a3f-2d8b5e7c9a10', customer_id: 'alice', price: 120, paid: 200 }
 
 function respond(status: number, body: unknown, headers: Record<string, string> = {}) {
   const text = typeof body === 'string' ? body : JSON.stringify(body)

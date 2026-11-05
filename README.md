@@ -32,8 +32,11 @@ All amounts are whole pence, so £1.20 is `120`:
 ```sh
 curl -X POST http://127.0.0.1:8000/purchases \
   -H 'Content-Type: application/json' \
-  -d '{"customer_id": "alice", "price": 120, "paid": 200}'
+  -d '{"request_id": "6f1c2e0a-4b7d-4c1e-9a3f-2d8b5e7c9a10", "customer_id": "alice", "price": 120, "paid": 200}'
 ```
+
+Each purchase needs a new `request_id`, a UUID the caller makes up.
+Sending the same request again returns the same answer without paying out twice.
 
 ```json
 {
@@ -60,6 +63,7 @@ The API tests are organised around the hard problems, not around files:
 - `test_change.py` compares the change-maker with a brute-force search over random small supplies.
 - `test_machine.py` races threads at one machine and checks no coin is paid out twice.
 - `test_rate_limit.py` drives the window with a fake clock, and races threads through the sweep of idle customers.
+- `test_idempotency.py` retries purchases, reuses their request ids for other purchases, and races copies of one retry.
 - `test_api.py` checks that the limiter turns a customer away before a bad price is even read.
 - `test_server.py` starts a real uvicorn and sends 40 customers at it at once.
 
@@ -67,7 +71,7 @@ The API tests are organised around the hard problems, not around files:
 
 | Method | Path | Notes |
 | --- | --- | --- |
-| `POST` | `/purchases` | `{ customer_id, price, paid }` in pence; returns `{ change, change_total }`, change largest first |
+| `POST` | `/purchases` | `{ request_id, customer_id, price, paid }`, amounts in pence; returns `{ change, change_total }`, change largest first |
 | `GET` | `/machine` | `{ coins, cash_box }`: the coins left for change, smallest first, and the sealed cash box |
 | `GET` | `/docs` | interactive OpenAPI docs, with an example of every error |
 
@@ -77,6 +81,7 @@ The API tests are organised around the hard problems, not around files:
 | 400 | `insufficient_payment` | `paid` is less than `price` |
 | 400 | `invalid_amount` | `price` or `paid` is negative |
 | 409 | `cannot_make_change` | the coins left cannot make the exact change |
+| 409 | `idempotency_conflict` | the `request_id` was already used for a different purchase |
 | 422 | | the body is malformed: a missing field, a wrong type such as `1.5` or `"150"`, or an unknown field |
 | 429 | `rate_limited` | three attempts in the last five seconds; `Retry-After` gives the whole seconds to wait |
 
@@ -100,6 +105,11 @@ None of them imports FastAPI, so each is tested without HTTP.
   A new attempt is allowed only if fewer than three fall in the last five seconds, which is "at most three in any five seconds" exactly, where a fixed window would allow six across a boundary.
   A customer over the limit is turned away before the price is checked, so the schema checks only types and the checks on the amounts live in the machine.
   Every attempt let through counts, sold or not, so failing requests cannot be sent without limit, and attempts turned away do not, so retrying early does not extend a lockout.
+- **A retried purchase gets the original answer.**
+  A client that loses the response cannot tell whether the purchase went through, so it sends it again with the same `request_id`.
+  The API keeps the outcome of every request id, a sale or a refusal, and answers a retry from that record, so nothing is paid out twice and the retry does not use up an attempt.
+  The same id with a different customer, price or payment is refused with `idempotency_conflict` and changes nothing.
+  A request turned away by the limiter was never handled, so it is not recorded and can be retried once the wait is over.
 - **The clock is injectable**, so the tests control time exactly rather than sleeping.
 
 ## Assumptions and trade-offs
@@ -115,6 +125,9 @@ None of them imports FastAPI, so each is tested without HTTP.
 - **State is in memory, in one process, and every purchase queues behind one lock.**
   To scale out, the coin supply moves to a database updated in one transaction per purchase, and the limiter to a shared store such as Redis.
 - **Failed attempts use up the window**, so a customer fumbling their money can be turned away.
+- **Request ids are remembered for as long as the process runs.**
+  That is enough for one machine that restarts with a full coin supply anyway.
+  A long-running service would keep them in the database with the purchase, and forget them after a day or so.
 
 ## The web client
 

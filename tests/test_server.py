@@ -1,8 +1,10 @@
 """End to end: a real uvicorn server, with many customers buying at the same time."""
 
 import asyncio
+import json
 import threading
 import time
+import uuid
 from collections import Counter
 
 import httpx2
@@ -38,7 +40,15 @@ def test_concurrent_customers(base_url):
     async def run():
         async with httpx2.AsyncClient(base_url=base_url, timeout=30) as client:
             requests = [
-                client.post("/purchases", json={"customer_id": c, "price": 10, "paid": 200})
+                client.post(
+                    "/purchases",
+                    json={
+                        "request_id": str(uuid.uuid4()),
+                        "customer_id": c,
+                        "price": 10,
+                        "paid": 200,
+                    },
+                )
                 for c in customers
                 for _ in range(4)
             ]
@@ -49,7 +59,9 @@ def test_concurrent_customers(base_url):
     responses, state = asyncio.run(run())
 
     # every customer got exactly three attempts, whatever the outcome
-    turned_away = Counter(r.request.content for r in responses if r.status_code == 429)
+    turned_away = Counter(
+        json.loads(r.request.content)["customer_id"] for r in responses if r.status_code == 429
+    )
     assert len(turned_away) == len(customers)
     assert set(turned_away.values()) == {1}
 
